@@ -1,0 +1,71 @@
+package com.example.aaudiorecorder
+
+import android.Manifest
+import androidx.appcompat.app.AppCompatActivity
+import android.os.Bundle
+import android.widget.Button
+import androidx.core.app.ActivityCompat
+// import android.widget.TextView
+import com.example.aaudiorecorder.databinding.ActivityMainBinding
+
+class MainActivity : AppCompatActivity() {
+
+    private lateinit var binding: ActivityMainBinding
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+
+        val button1: Button = findViewById(R.id.button1)
+        val button2: Button = findViewById(R.id.button2)
+        button1.setOnClickListener {
+            startAAudioCapture()
+        }
+        button2.setOnClickListener {
+            stopAAudioCapture()
+        }
+
+        ActivityCompat.requestPermissions(
+            this,
+            arrayOf(
+                Manifest.permission.RECORD_AUDIO,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE,
+            ),
+            0
+        )
+
+        // Example of a call to a native method
+        // binding.sampleText.text = stringFromJNI()
+    }
+
+    private fun startAAudioCapture() {
+        class AAudioThread : Thread() {
+            override fun run() {
+                super.run()
+                startAAudioCaptureFromJNI()
+            }
+        }
+        AAudioThread().start()
+    }
+
+    private fun stopAAudioCapture() {
+        stopAAudioCaptureFromJNI()
+    }
+
+    /**
+     * A native method that is implemented by the 'aaudiorecorder' native library,
+     * which is packaged with this application.
+     */
+    private external fun startAAudioCaptureFromJNI()
+    private external fun stopAAudioCaptureFromJNI()
+    // external fun stringFromJNI(): String
+
+    companion object {
+        // Used to load the 'aaudiorecorder' library on application startup.
+        init {
+            System.loadLibrary("aaudiorecorder")
+        }
+    }
+}
