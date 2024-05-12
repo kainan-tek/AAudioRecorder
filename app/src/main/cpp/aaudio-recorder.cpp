@@ -5,7 +5,7 @@
 #include <fstream>
 #include <vector>
 #include <aaudio/AAudio.h>
-#include "log.h"
+#include "common.h"
 
 #define ENABLE_CALLBACK 1
 
@@ -185,6 +185,10 @@ bool stopAAudioCapture() {
             ALOGE("aaudio request stop error, ret %d %s\n", result, AAudio_convertResultToText(result));
         }
 
+        aaudio_stream_state_t currentState = AAudioStream_getState(aaudioStream);
+        if (currentState != AAUDIO_STREAM_STATE_STOPPED) {
+            ALOGW("AAudioStream_getState %s\n", AAudio_convertStreamStateToText(currentState));
+        }
         if (aaudioStream != nullptr) {
             AAudioStream_close(aaudioStream);
             aaudioStream = nullptr;
@@ -208,13 +212,3 @@ Java_com_example_aaudiorecorder_MainActivity_stopAAudioCaptureFromJNI(JNIEnv *en
     // TODO: implement stopAAudioCaptureFromJNI()
     stopAAudioCapture();
 }
-
-//extern "C" JNIEXPORT jstring
-//
-//JNICALL
-//Java_com_example_aaudiorecorder_MainActivity_stringFromJNI(
-//        JNIEnv *env,
-//        jobject /* this */) {
-//    std::string hello = "Hello from C++";
-//    return env->NewStringUTF(hello.c_str());
-//}

@@ -35,9 +35,6 @@ class MainActivity : AppCompatActivity() {
             ),
             0
         )
-
-        // Example of a call to a native method
-        // binding.sampleText.text = stringFromJNI()
     }
 
     private fun startAAudioCapture() {
@@ -60,7 +57,6 @@ class MainActivity : AppCompatActivity() {
      */
     private external fun startAAudioCaptureFromJNI()
     private external fun stopAAudioCaptureFromJNI()
-    // external fun stringFromJNI(): String
 
     companion object {
         // Used to load the 'aaudiorecorder' library on application startup.
