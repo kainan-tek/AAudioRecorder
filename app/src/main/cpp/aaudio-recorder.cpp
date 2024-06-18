@@ -7,8 +7,6 @@
 #include <aaudio/AAudio.h>
 #include "common.h"
 
-#define ENABLE_CALLBACK 1
-
 aaudio_input_preset_t inputPreset = AAUDIO_INPUT_PRESET_VOICE_RECOGNITION;
 int32_t sampleRate = 48000;
 int32_t channelCount = 1;
@@ -30,14 +28,15 @@ std::string audioFile = "/data/record_48k_1ch_16bit.raw";
 // std::string audioFile = "/data/data/com.example.aaudiorecorder/files/record_48k_1ch_16bit.raw";
 
 #if ENABLE_CALLBACK
-aaudio_data_callback_result_t dataCallback(AAudioStream *stream __unused, void *userData __unused, void *audioData, int32_t
-numFrames)
+aaudio_data_callback_result_t dataCallback(AAudioStream *stream __unused, void *userData __unused, void *audioData,
+                                           int32_t numFrames)
 {
-    // ALOGI("aaudio dataCallback, numFrames:%d, channelCount:%d, bytesPerChannel:%d\n", numFrames, mChannelCount, mBytesPerChannel);
-    if (numFrames > 0){
-        if (outputFile.is_open()){
+    // ALOGI("aaudio dataCallback, numFrames:%d, channelCount:%d, bytesPerChannel:%d\n", numFrames, channelCount,
+    // bytesPerChannel);
+    if (numFrames > 0) {
+        if (outputFile.is_open()) {
             outputFile.write(static_cast<const char *>(audioData), numFrames * channelCount * bytesPerChannel);
-            ALOGD("aaudio dataCallback, numFrames:%d\n", numFrames);
+            // ALOGD("aaudio dataCallback, numFrames:%d\n", numFrames);
         } else {
             ALOGI("aaudio dataCallback end\n");
             return AAUDIO_CALLBACK_RESULT_STOP;
@@ -52,6 +51,7 @@ void errorCallback(AAudioStream *stream __unused, void *userData __unused, aaudi
 }
 #endif
 
+void stopCapture();
 bool stopAAudioCapture();
 bool startAAudioCapture() {
     ALOGI("start AAudioCapture, isStart: %d\n", isStart);
@@ -116,7 +116,8 @@ bool startAAudioCapture() {
     int32_t actualDataFormat = AAudioStream_getFormat(aaudioStream);
     int32_t actualBufferSize = AAudioStream_getBufferSizeInFrames(aaudioStream);
     ALOGI("get AAudio params: actualSampleRate:%d, actualChannelCount:%d, actualDataFormat:%d, actualBufferSize:%d, "
-          "framesPerBurst:%d\n", actualSampleRate, actualChannelCount, actualDataFormat, actualBufferSize, framesPerBurst);
+          "framesPerBurst:%d\n", actualSampleRate, actualChannelCount, actualDataFormat, actualBufferSize,
+          framesPerBurst);
 
     switch (actualDataFormat)
     {
@@ -139,7 +140,7 @@ bool startAAudioCapture() {
 
     result = AAudioStream_requestStart(aaudioStream);
     if (result != AAUDIO_OK) {
-        ALOGE("AAudioStream_requestStart(input) returned %d %s\n", result, AAudio_convertResultToText(result));
+        ALOGE("AAudioStream_requestStart returned %d %s\n", result, AAudio_convertResultToText(result));
         if (aaudioStream != nullptr) {
             AAudioStream_close(aaudioStream);
             aaudioStream = nullptr;
@@ -150,19 +151,20 @@ bool startAAudioCapture() {
     aaudio_stream_state_t state = AAudioStream_getState(aaudioStream);
     ALOGI("after request start, state = %s\n", AAudio_convertStreamStateToText(state));
 
+    std::vector<char> dataBuf(actualBufferSize * actualChannelCount * bytesPerChannel);
     while (aaudioStream) {
-#if !ENABLE_CALLBACK
-        std::vector<char> dataBuf(actualBufferSize * actualChannelCount * bytesPerChannel);
-        if (AAudioStream_getState(aaudioStream) >= AAUDIO_STREAM_STATE_STOPPING) break;
+#ifdef ENABLE_CALLBACK
+        usleep(10 * 1000);
+#else
         int32_t framesRead = AAudioStream_read(aaudioStream, (void *)dataBuf.data(), framesPerBurst, 60 * 1000 * 1000);
         if (framesRead) {
-            ALOGD("aaudio read, framesRead:%d, framesPerBurst:%d\n", framesRead, framesPerBurst);
+            // ALOGD("aaudio read, framesRead:%d, framesPerBurst:%d\n", framesRead, framesPerBurst);
             outputFile.write((char *)dataBuf.data(), framesRead * actualChannelCount * bytesPerChannel);
         }
 #endif
-        usleep(2 * 1000);
+        if (!isStart)
+            stopCapture();
     }
-    if (aaudioStream) stopAAudioCapture();
     return true;
 }
 
@@ -170,35 +172,37 @@ bool stopAAudioCapture() {
     ALOGI("stop AAudioCapture, isStart: %d\n", isStart);
     if (isStart) {
 		isStart = false;
-        int32_t xRunCount = AAudioStream_getXRunCount(aaudioStream);
-        ALOGI("AAudioStream_getXRunCount %d\n", xRunCount);
-        aaudio_result_t result = AAudioStream_requestStop(aaudioStream);
-        if (result == AAUDIO_OK) {
-            aaudio_stream_state_t currentState = AAudioStream_getState(aaudioStream);
-            aaudio_stream_state_t inputState = currentState;
-            while (result == AAUDIO_OK && currentState != AAUDIO_STREAM_STATE_STOPPED)
-            {
-                result = AAudioStream_waitForStateChange(aaudioStream, inputState, &currentState, 60 * 1000 * 1000);
-                inputState = currentState;
-            }
-        } else {
-            ALOGE("aaudio request stop error, ret %d %s\n", result, AAudio_convertResultToText(result));
-        }
-
-        aaudio_stream_state_t currentState = AAudioStream_getState(aaudioStream);
-        if (currentState != AAUDIO_STREAM_STATE_STOPPED) {
-            ALOGW("AAudioStream_getState %s\n", AAudio_convertStreamStateToText(currentState));
-        }
-        if (aaudioStream != nullptr) {
-            AAudioStream_close(aaudioStream);
-            aaudioStream = nullptr;
-        }
-        if (outputFile.is_open()) outputFile.close();
-        // isStart = false;
     }
     return true;
 }
 
+void stopCapture() {
+    int32_t xRunCount = AAudioStream_getXRunCount(aaudioStream);
+    ALOGI("AAudioStream_getXRunCount %d\n", xRunCount);
+    aaudio_result_t result = AAudioStream_requestStop(aaudioStream);
+    if (result == AAUDIO_OK) {
+        aaudio_stream_state_t currentState = AAudioStream_getState(aaudioStream);
+        aaudio_stream_state_t inputState = currentState;
+        while (result == AAUDIO_OK && currentState != AAUDIO_STREAM_STATE_STOPPED)
+        {
+            result = AAudioStream_waitForStateChange(aaudioStream, inputState, &currentState, 60 * 1000 * 1000);
+            inputState = currentState;
+        }
+    } else {
+        ALOGE("aaudio request stop error, ret %d %s\n", result, AAudio_convertResultToText(result));
+    }
+
+    aaudio_stream_state_t currentState = AAudioStream_getState(aaudioStream);
+    if (currentState != AAUDIO_STREAM_STATE_STOPPED) {
+        ALOGW("AAudioStream_getState %s\n", AAudio_convertStreamStateToText(currentState));
+    }
+    if (aaudioStream != nullptr) {
+        AAudioStream_close(aaudioStream);
+        aaudioStream = nullptr;
+    }
+    if (outputFile.is_open())
+        outputFile.close();
+}
 
 extern "C"
 JNIEXPORT void JNICALL
