@@ -47,11 +47,6 @@ aaudio_data_callback_result_t dataCallback(AAudioStream *stream __unused, void *
             return AAUDIO_CALLBACK_RESULT_STOP;
         }
         totalBytesRead += numFrames * channelCount * bytesPerChannel;
-        if (totalBytesRead >= MAX_FILE_SIZE)
-        {
-            ALOGE("AudioRecord data size exceeds limit: %d bytes, stop record\n", MAX_FILE_SIZE);
-            isStart = false;
-        }
     }
     return AAUDIO_CALLBACK_RESULT_CONTINUE;
 }
@@ -150,7 +145,10 @@ bool startAAudioCapture()
     /************** set audio file path **************/
     char audioFileArr[256] = {0};
 #ifdef USE_WAV_HEADER
-    snprintf(audioFileArr, sizeof(audioFileArr), "/data/record_%dHz_%dch_%dbit.wav", actualSampleRate, actualChannelCount, bytesPerChannel * 8);
+    snprintf(audioFileArr, sizeof(audioFileArr), "/data/record_%dHz_%dch_%dbit.wav", actualSampleRate,
+             actualChannelCount, bytesPerChannel * 8);
+//    snprintf(audioFileArr, sizeof(audioFileArr), "/data/data/com.example.aaudiorecorder/files/record_%dHz_%dch_%dbit"
+//                                                 ".wav", actualSampleRate, actualChannelCount, bytesPerChannel * 8);
 #else
     snprintf(audioFileArr, sizeof(audioFileArr), "/data/record_%dHz_%dch_%dbit.pcm", actualSampleRate, actualChannelCount, bytesPerChannel * 8);
 #endif
@@ -169,7 +167,7 @@ bool startAAudioCapture()
 
 #ifdef USE_WAV_HEADER
     /************** write audio file header **************/
-    int32_t numSamples = 100 * 1024 * 1024; // 100M
+    int32_t numSamples = 0;
     if (!writeWAVHeader(outputFile, numSamples, actualSampleRate, actualChannelCount, bytesPerChannel * 8))
     {
         ALOGE("writeWAVHeader failed\n");
@@ -208,14 +206,15 @@ bool startAAudioCapture()
             // ALOGD("aaudio read, framesRead:%d, framesPerBurst:%d\n", framesRead, framesPerBurst);
             outputFile.write((char *)dataBuf.data(), framesRead * actualChannelCount * bytesPerChannel);
             totalBytesRead += framesRead * actualChannelCount * bytesPerChannel;
-            if (totalBytesRead >= MAX_FILE_SIZE)
-            {
-                ALOGE("AudioRecord data size exceeds limit: %d bytes, stop record\n", MAX_FILE_SIZE);
-                isStart = false;
-            }
         }
 #endif
-        if (!isStart) {
+        if (totalBytesRead >= MAX_DATA_SIZE)
+        {
+            ALOGE("AudioRecord data size exceeds limit: %d MB, stop record\n", MAX_DATA_SIZE / (1024*1024));
+            isStart = false;
+        }
+        if (!isStart)
+        {
 #ifdef USE_WAV_HEADER
             UpdateSizes(outputFile, totalBytesRead); // update RIFF chunk size and data chunk size
 #endif

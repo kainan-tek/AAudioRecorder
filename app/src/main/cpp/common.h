@@ -13,7 +13,7 @@
 #define ALOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 // #define ALOGD(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
 
-#define MAX_FILE_SIZE (1 * 1024 * 1024 * 1024) // 1GB
+#define MAX_DATA_SIZE (1 * 1024 * 1024 * 1024)
 
 #define ENABLE_CALLBACK 1
 #define USE_WAV_HEADER 1
