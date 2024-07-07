@@ -6,6 +6,7 @@
 #include <vector>
 #include <aaudio/AAudio.h>
 #include "common.h"
+#include "wav-header.h"
 
 aaudio_input_preset_t inputPreset = AAUDIO_INPUT_PRESET_VOICE_RECOGNITION;
 int32_t sampleRate = 48000;
@@ -119,9 +120,7 @@ bool startAAudioCapture()
     int32_t actualDataFormat = AAudioStream_getFormat(aaudioStream);
     int32_t actualBufferSize = AAudioStream_getBufferSizeInFrames(aaudioStream);
     ALOGI("get AAudio params: actualSampleRate:%d, actualChannelCount:%d, actualDataFormat:%d, actualBufferSize:%d, "
-          "framesPerBurst:%d\n",
-          actualSampleRate, actualChannelCount, actualDataFormat, actualBufferSize,
-          framesPerBurst);
+          "framesPerBurst:%d\n", actualSampleRate, actualChannelCount, actualDataFormat, actualBufferSize, framesPerBurst);
 
     switch (actualDataFormat)
     {
@@ -210,7 +209,7 @@ bool startAAudioCapture()
 #endif
         if (totalBytesRead >= MAX_DATA_SIZE)
         {
-            ALOGE("AudioRecord data size exceeds limit: %d MB, stop record\n", MAX_DATA_SIZE / (1024*1024));
+            ALOGE("AudioRecord data size exceeds limit: %d MB, stop record\n", MAX_DATA_SIZE / (1024 * 1024));
             isStart = false;
         }
         if (!isStart)
