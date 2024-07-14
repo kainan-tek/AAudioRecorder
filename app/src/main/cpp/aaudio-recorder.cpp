@@ -4,6 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <ctime>
 #include <aaudio/AAudio.h>
 #include "common.h"
 #include "wav-header.h"
@@ -28,6 +29,13 @@ AAudioStream *aaudioStream = nullptr;
 std::ofstream outputFile;
 std::string audioFile = "/data/record_48k_1ch_16bit.raw";
 // std::string audioFile = "/data/data/com.example.aaudiorecorder/files/record_48k_1ch_16bit.raw";
+
+void get_format_time(char *format_time)
+{
+    time_t t = time(nullptr);
+    struct tm *now = localtime(&t);
+    strftime(format_time, 32, "%Y%m%d_%H.%M.%S", now);
+}
 
 #ifdef ENABLE_CALLBACK
 aaudio_data_callback_result_t dataCallback(AAudioStream *stream __unused, void *userData __unused, void *audioData,
@@ -143,13 +151,16 @@ bool startAAudioCapture()
 
     /************** set audio file path **************/
     char audioFileArr[256] = {0};
+    char formatTime[32] = {0};
+    get_format_time(formatTime);
 #ifdef USE_WAV_HEADER
-    snprintf(audioFileArr, sizeof(audioFileArr), "/data/record_%dHz_%dch_%dbit.wav", actualSampleRate,
-             actualChannelCount, bytesPerChannel * 8);
+    snprintf(audioFileArr, sizeof(audioFileArr), "/data/record_%dHz_%dch_%dbit_%s.wav", actualSampleRate,
+             actualChannelCount, bytesPerChannel * 8, formatTime);
 //    snprintf(audioFileArr, sizeof(audioFileArr), "/data/data/com.example.aaudiorecorder/files/record_%dHz_%dch_%dbit"
 //                                                 ".wav", actualSampleRate, actualChannelCount, bytesPerChannel * 8);
 #else
-    snprintf(audioFileArr, sizeof(audioFileArr), "/data/record_%dHz_%dch_%dbit.pcm", actualSampleRate, actualChannelCount, bytesPerChannel * 8);
+    snprintf(audioFileArr, sizeof(audioFileArr), "/data/record_%dHz_%dch_%dbit_%s.pcm", actualSampleRate,
+             actualChannelCount, bytesPerChannel * 8, formatTime);
 #endif
     audioFile = std::string(audioFileArr);
     ALOGI("Audio file path: %s\n", audioFile.c_str());
