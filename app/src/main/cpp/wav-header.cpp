@@ -4,7 +4,6 @@
 
 #include <cstdint>
 #include <fstream>
-#include "common.h"
 #include "wav-header.h"
 
 /**
@@ -70,7 +69,7 @@ bool writeWAVHeader(std::ofstream &outFile, uint32_t numSamples, uint32_t sample
  *
  * @return True if the header was read successfully, false otherwise.
  */
-bool readWAVHeader(const std::string &filename, WAVHeader &header)
+[[maybe_unused]] bool readWAVHeader(const std::string &filename, WAVHeader &header)
 {
     std::ifstream in(filename, std::ios::binary | std::ios::in);
     if (!in.is_open())

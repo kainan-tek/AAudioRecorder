@@ -7,7 +7,13 @@
 
 #include <string>
 #include <cstdint>
-#include "common.h"
+#include <android/log.h>
+
+#define LOG_TAG "AAudioPlayer"
+#define ALOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
+#define ALOGW(...) __android_log_print(ANDROID_LOG_WARN, LOG_TAG, __VA_ARGS__)
+#define ALOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
+// #define ALOGD(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
 
 struct WAVHeader
 {
@@ -58,7 +64,7 @@ struct WAVHeader
      *
      * @throws None
      */
-    void read(std::ifstream &in)
+    [[maybe_unused]] void read(std::ifstream &in)
     {
         in.read(riffID, 4);                 // "RIFF"
         in.read((char *)&riffSize, 4);      // 36 + (numSamples * numChannels * bytesPerSample)
@@ -76,7 +82,7 @@ struct WAVHeader
     }
 
     /** Prints the WAV file header. */
-    void print()
+    [[maybe_unused]] void print()
     {
         ALOGI("RiffID: %s\n", riffID);
         ALOGI("RiffSize: %d\n", riffSize);
@@ -94,7 +100,7 @@ struct WAVHeader
     }
 };
 
-bool readWAVHeader(const std::string &filename, WAVHeader &header);
+[[maybe_unused]] bool readWAVHeader(const std::string &filename, WAVHeader &header);
 bool writeWAVHeader(std::ofstream &outFile, uint32_t numSamples, uint32_t sampleRate, uint32_t numChannels, uint32_t bitsPerSample);
 void UpdateSizes(std::ofstream &outfile, uint32_t data_chunk_size);
 

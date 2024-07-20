@@ -27,7 +27,7 @@ int32_t totalBytesRead = 0;
 AAudioStreamBuilder *builder = nullptr;
 AAudioStream *aaudioStream = nullptr;
 std::ofstream outputFile;
-std::string audioFile = "/data/record_48k_1ch_16bit.raw";
+std::string audioFile = "/data/record_48k_1ch_16bit.wav";
 // std::string audioFile = "/data/data/com.example.aaudiorecorder/files/record_48k_1ch_16bit.raw";
 
 void get_format_time(char *format_time)
@@ -67,21 +67,15 @@ void errorCallback(AAudioStream *stream __unused, void *userData __unused, aaudi
 #endif
 
 void stopCapture();
-bool stopAAudioCapture();
-bool startAAudioCapture()
+void startAAudioCapture()
 {
-    ALOGI("start AAudioCapture, isStart: %d\n", isStart);
     if (isStart)
     {
         ALOGI("in starting status, needn't start again\n");
-        return false;
-    }
-    if (aaudioStream && AAudioStream_getState(aaudioStream) != AAUDIO_STREAM_STATE_CLOSED)
-    {
-        ALOGI("stream not in stopped status, try again later\n"); // avoid start again during closing
-        return false;
+        return;
     }
     isStart = true;
+    ALOGI("isStart: %d, start AAudioCapture\n", isStart);
 
     // Use an AAudioStreamBuilder to contain requested parameters.
     aaudio_result_t result = AAudio_createStreamBuilder(&builder);
@@ -89,7 +83,7 @@ bool startAAudioCapture()
     {
         ALOGE("AAudio_createStreamBuilder() returned %d %s\n", result, AAudio_convertResultToText(result));
         isStart = false;
-        return false;
+        return;
     }
     AAudioStreamBuilder_setInputPreset(builder, inputPreset);
     AAudioStreamBuilder_setSampleRate(builder, sampleRate);
@@ -118,7 +112,7 @@ bool startAAudioCapture()
     {
         ALOGE("AAudioStreamBuilder_openStream() returned %d %s\n", result, AAudio_convertResultToText(result));
         isStart = false;
-        return false;
+        return;
     }
     framesPerBurst = AAudioStream_getFramesPerBurst(aaudioStream);
     AAudioStream_setBufferSizeInFrames(aaudioStream, numOfBursts * framesPerBurst);
@@ -172,7 +166,7 @@ bool startAAudioCapture()
         ALOGE("AAudioRecorder error opening file\n");
         AAudioStream_close(aaudioStream);
         isStart = false;
-        return false;
+        return;
     }
 
 #ifdef USE_WAV_HEADER
@@ -184,7 +178,7 @@ bool startAAudioCapture()
         AAudioStream_close(aaudioStream);
         outputFile.close();
         isStart = false;
-        return false;
+        return;
     }
 #endif
 
@@ -199,7 +193,7 @@ bool startAAudioCapture()
             aaudioStream = nullptr;
         }
         isStart = false;
-        return false;
+        return;
     }
     aaudio_stream_state_t state = AAudioStream_getState(aaudioStream);
     ALOGI("after request start, state = %s\n", AAudio_convertStreamStateToText(state));
@@ -231,17 +225,17 @@ bool startAAudioCapture()
             stopCapture();
         }
     }
-    return true;
 }
 
-bool stopAAudioCapture()
+void stopAAudioCapture()
 {
-    ALOGI("stop AAudioCapture, isStart: %d\n", isStart);
-    if (isStart)
+    if (!isStart)
     {
-        isStart = false;
+        ALOGI("in stop status, needn't stop again");
+        return;
     }
-    return true;
+    ALOGI("isStart: %d, stop AAudioCapture\n", isStart);
+    isStart = false;
 }
 
 void stopCapture()
