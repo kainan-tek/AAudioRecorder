@@ -28,7 +28,6 @@ AAudioStreamBuilder *builder = nullptr;
 AAudioStream *aaudioStream = nullptr;
 std::ofstream outputFile;
 std::string audioFile = "/data/record_48k_1ch_16bit.wav";
-// std::string audioFile = "/data/data/com.example.aaudiorecorder/files/record_48k_1ch_16bit.raw";
 
 void get_format_time(char *format_time)
 {
@@ -148,12 +147,10 @@ void startAAudioCapture()
     char formatTime[32] = {0};
     get_format_time(formatTime);
 #ifdef USE_WAV_HEADER
-    snprintf(audioFileArr, sizeof(audioFileArr), "/data/record_%dHz_%dch_%dbit_%s.wav", actualSampleRate,
+    snprintf(audioFileArr, sizeof(audioFileArr), "/data/record_%dk_%dch_%dbit_%s.wav", actualSampleRate/1000,
              actualChannelCount, bytesPerChannel * 8, formatTime);
-//    snprintf(audioFileArr, sizeof(audioFileArr), "/data/data/com.example.aaudiorecorder/files/record_%dHz_%dch_%dbit"
-//                                                 ".wav", actualSampleRate, actualChannelCount, bytesPerChannel * 8);
 #else
-    snprintf(audioFileArr, sizeof(audioFileArr), "/data/record_%dHz_%dch_%dbit_%s.pcm", actualSampleRate,
+    snprintf(audioFileArr, sizeof(audioFileArr), "/data/record_%dk_%dch_%dbit_%s.pcm", actualSampleRate/1000,
              actualChannelCount, bytesPerChannel * 8, formatTime);
 #endif
     audioFile = std::string(audioFileArr);

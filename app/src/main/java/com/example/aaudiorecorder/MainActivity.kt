@@ -49,10 +49,6 @@ class MainActivity : AppCompatActivity() {
         stopAAudioCaptureFromJNI()
     }
 
-    /**
-     * A native method that is implemented by the 'aaudiorecorder' native library,
-     * which is packaged with this application.
-     */
     private external fun startAAudioCaptureFromJNI()
     private external fun stopAAudioCaptureFromJNI()
 
