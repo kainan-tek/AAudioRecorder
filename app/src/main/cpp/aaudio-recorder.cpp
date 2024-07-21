@@ -7,6 +7,7 @@
 #include <ctime>
 #include <aaudio/AAudio.h>
 #include "common.h"
+#include "aaudio-recorder.h"
 #include "wav-header.h"
 
 aaudio_input_preset_t inputPreset = AAUDIO_INPUT_PRESET_VOICE_RECOGNITION;
