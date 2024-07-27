@@ -10,7 +10,7 @@ android {
     defaultConfig {
         applicationId = "com.example.aaudiorecorder"
         minSdk = 31
-        targetSdk = 34
+        this.targetSdk = 34
         versionCode = 1
         versionName = "1.0"
 
@@ -45,7 +45,6 @@ android {
 }
 
 dependencies {
-
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
