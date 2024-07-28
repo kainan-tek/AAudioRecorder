@@ -14,24 +14,26 @@
 class AAudioRecorder
 {
 private:
-    aaudio_input_preset_t inputPreset;
-    int32_t sampleRate;
-    int32_t channelCount;
-    // aaudio_channel_mask_t channelMask;
-    aaudio_format_t format;
-    int32_t framesPerBurst;
-    int32_t numOfBursts;
-    aaudio_direction_t direction;
-    aaudio_sharing_mode_t sharingMode;
-    aaudio_performance_mode_t performanceMode;
+    aaudio_input_preset_t m_inputPreset;
+    int32_t m_sampleRate;
+    int32_t m_channelCount;
+    // aaudio_channel_mask_t m_channelMask;
+    aaudio_format_t m_format;
+    int32_t m_framesPerBurst;
+    int32_t m_numOfBursts;
+    aaudio_direction_t m_direction;
+    aaudio_sharing_mode_t m_sharingMode;
+    aaudio_performance_mode_t m_performanceMode;
 
-    bool isPlaying;
-    AAudioStream *aaudioStream;
-    std::string audioFile;
+    bool m_isPlaying;
+    AAudioStream *m_aaudioStream;
+    std::string m_audioFile;
 
-    static int32_t bytesPerFrame;
-    static int32_t totalBytesRead;
-    static std::ofstream outputFile;
+    static int32_t ms_bytesPerFrame;
+    static int32_t ms_totalBytesRead;
+    static std::ofstream ms_outputFile;
+
+    void _stopCapture();
 
 #ifdef ENABLE_CALLBACK
     static aaudio_data_callback_result_t dataCallback(AAudioStream *stream, void *userData, void *audioData, int32_t numFrames);
@@ -44,7 +46,6 @@ public:
 
     void startAAudioCapture();
     void stopAAudioCapture();
-    void stopCapture();
 };
 
 #endif // AAUDIORECORDER_AAUDIO_RECORDER_H
