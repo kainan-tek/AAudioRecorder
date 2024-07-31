@@ -28,12 +28,10 @@ private:
     bool m_isPlaying;
     AAudioStream *m_aaudioStream;
     std::string m_audioFile;
-
-    static int32_t ms_bytesPerFrame;
-    static int32_t ms_totalBytesRead;
-    static std::ofstream ms_outputFile;
+    std::ofstream m_outputFile;
 
     void _stopCapture();
+    static int32_t _getBytesPerSample(aaudio_format_t format);
 
 #ifdef ENABLE_CALLBACK
     static aaudio_data_callback_result_t dataCallback(AAudioStream *stream, void *userData, void *audioData, int32_t numFrames);
@@ -47,5 +45,4 @@ public:
     void startAAudioCapture();
     void stopAAudioCapture();
 };
-
 #endif // AAUDIORECORDER_AAUDIO_RECORDER_H

@@ -10,10 +10,6 @@
 #include "aaudio-recorder.h"
 #include "wav-header.h"
 
-int32_t AAudioRecorder::ms_bytesPerFrame = 0;
-int32_t AAudioRecorder::ms_totalBytesRead = 0;
-std::ofstream AAudioRecorder::ms_outputFile;
-
 void get_format_time(char *format_time)
 {
     time_t t = time(nullptr);
@@ -35,8 +31,6 @@ AAudioRecorder::AAudioRecorder() : m_inputPreset(AAUDIO_INPUT_PRESET_VOICE_RECOG
                                    m_aaudioStream(nullptr),
                                    m_audioFile("/data/record_48k_1ch_16bit.wav")
 {
-    ms_bytesPerFrame = 0;
-    ms_totalBytesRead = 0;
 }
 
 AAudioRecorder::~AAudioRecorder() = default;
@@ -65,7 +59,7 @@ void AAudioRecorder::startAAudioCapture()
     // AAudioStreamBuilder_setAllowedCapturePolicy(builder, AAUDIO_ALLOW_CAPTURE_BY_ALL);
     // AAudioStreamBuilder_setPrivacySensitive(builder, false);
 #ifdef ENABLE_CALLBACK
-    AAudioStreamBuilder_setDataCallback(builder, dataCallback, nullptr);
+    AAudioStreamBuilder_setDataCallback(builder, dataCallback, (void *)&m_outputFile);
     AAudioStreamBuilder_setErrorCallback(builder, errorCallback, nullptr);
 #endif
     ALOGI("set AAudio params: InputPreset:%d, SampleRate:%d, ChannelCount:%d, Format:%d\n", m_inputPreset, m_sampleRate,
@@ -90,44 +84,26 @@ void AAudioRecorder::startAAudioCapture()
           "framesPerBurst:%d\n",
           actualSampleRate, actualChannelCount, actualDataFormat, actualBufferSize, m_framesPerBurst);
 
-    switch (actualDataFormat)
-    {
-    case AAUDIO_FORMAT_PCM_FLOAT:
-        ms_bytesPerFrame = actualChannelCount * 4;
-        break;
-    case AAUDIO_FORMAT_PCM_I16:
-        ms_bytesPerFrame = actualChannelCount * 2;
-        break;
-    case AAUDIO_FORMAT_PCM_I24_PACKED:
-        ms_bytesPerFrame = actualChannelCount * 3;
-        break;
-    case AAUDIO_FORMAT_PCM_I32:
-        ms_bytesPerFrame = actualChannelCount * 4;
-        break;
-    default:
-        ms_bytesPerFrame = actualChannelCount * 2;
-        break;
-    }
-
+    int32_t bytesPerFrame = _getBytesPerSample(actualDataFormat) * actualChannelCount;
     /************** set audio file path **************/
     char audioFileArr[256] = {0};
     char formatTime[32] = {0};
     get_format_time(formatTime);
 #ifdef USE_WAV_HEADER
     snprintf(audioFileArr, sizeof(audioFileArr), "/data/record_%dk_%dch_%dbit.wav", actualSampleRate / 1000,
-             actualChannelCount, ms_bytesPerFrame / actualChannelCount * 8);
+             actualChannelCount, bytesPerFrame / actualChannelCount * 8);
 //    snprintf(audioFileArr, sizeof(audioFileArr), "/data/record_%dk_%dch_%dbit_%s.wav", actualSampleRate/1000,
-//             actualChannelCount, ms_bytesPerFrame/actualChannelCount * 8, formatTime);
+//             actualChannelCount, bytesPerFrame/actualChannelCount * 8, formatTime);
 #else
     snprintf(audioFileArr, sizeof(audioFileArr), "/data/record_%dk_%dch_%dbit_%s.pcm", actualSampleRate / 1000,
-             actualChannelCount, ms_bytesPerFrame / actualChannelCount * 8, formatTime);
+             actualChannelCount, bytesPerFrame / actualChannelCount * 8, formatTime);
 #endif
     m_audioFile = std::string(audioFileArr);
     ALOGI("Audio file path: %s\n", m_audioFile.c_str());
 
     /************** open output file **************/
-    ms_outputFile.open(m_audioFile, std::ios::binary | std::ios::out);
-    if (!ms_outputFile.is_open() || ms_outputFile.fail())
+    m_outputFile.open(m_audioFile, std::ios::binary | std::ios::out);
+    if (!m_outputFile.is_open() || m_outputFile.fail())
     {
         ALOGE("AAudioRecorder error opening file\n");
         AAudioStream_close(m_aaudioStream);
@@ -137,17 +113,16 @@ void AAudioRecorder::startAAudioCapture()
 #ifdef USE_WAV_HEADER
     /************** write audio file header **************/
     int32_t numSamples = 0;
-    if (!writeWAVHeader(ms_outputFile, numSamples, actualSampleRate, actualChannelCount,
-                        ms_bytesPerFrame / actualChannelCount * 8))
+    if (!writeWAVHeader(m_outputFile, numSamples, actualSampleRate, actualChannelCount,
+                        bytesPerFrame / actualChannelCount * 8))
     {
         ALOGE("writeWAVHeader failed\n");
         AAudioStream_close(m_aaudioStream);
-        ms_outputFile.close();
+        m_outputFile.close();
         return;
     }
 #endif
 
-    ms_totalBytesRead = 0;
     result = AAudioStream_requestStart(m_aaudioStream);
     if (result != AAUDIO_OK)
     {
@@ -163,7 +138,7 @@ void AAudioRecorder::startAAudioCapture()
     ALOGI("after request start, state = %s\n", AAudio_convertStreamStateToText(state));
 
     m_isPlaying = true;
-    std::vector<char> dataBuf(actualBufferSize * ms_bytesPerFrame);
+    std::vector<char> dataBuf(actualBufferSize * bytesPerFrame);
     while (m_aaudioStream)
     {
 #ifdef ENABLE_CALLBACK
@@ -173,11 +148,11 @@ void AAudioRecorder::startAAudioCapture()
         if (framesRead)
         {
             // ALOGD("aaudio read, framesRead:%d, framesPerBurst:%d\n", framesRead, m_framesPerBurst);
-            ms_outputFile.write((char *)dataBuf.data(), framesRead * ms_bytesPerFrame);
-            ms_totalBytesRead += framesRead * ms_bytesPerFrame;
+            m_outputFile.write((char *)dataBuf.data(), framesRead * bytesPerFrame);
         }
 #endif
-        if (ms_totalBytesRead >= MAX_DATA_SIZE)
+        int64_t totalBytesRead = AAudioStream_getFramesRead(m_aaudioStream) * bytesPerFrame;
+        if (totalBytesRead >= MAX_DATA_SIZE)
         {
             ALOGE("AudioRecord data size exceeds limit: %d MB, stop record\n", MAX_DATA_SIZE / (1024 * 1024));
             m_isPlaying = false;
@@ -185,7 +160,7 @@ void AAudioRecorder::startAAudioCapture()
         if (!m_isPlaying)
         {
 #ifdef USE_WAV_HEADER
-            UpdateSizes(ms_outputFile, ms_totalBytesRead); // update RIFF chunk size and data chunk size
+            UpdateSizes(m_outputFile, totalBytesRead); // update RIFF chunk size and data chunk size
 #endif
             _stopCapture();
         }
@@ -227,21 +202,21 @@ void AAudioRecorder::_stopCapture()
         AAudioStream_close(m_aaudioStream);
         m_aaudioStream = nullptr;
     }
-    if (ms_outputFile.is_open())
-        ms_outputFile.close();
+    if (m_outputFile.is_open())
+        m_outputFile.close();
 }
 
 #ifdef ENABLE_CALLBACK
 aaudio_data_callback_result_t
 AAudioRecorder::dataCallback(AAudioStream *stream, void *userData, void *audioData, int32_t numFrames)
 {
-    // ALOGI("aaudio dataCallback, numFrames:%d, channelCount:%d, bytesPerChannel:%d\n", numFrames, m_channelCount,
-    // bytesPerChannel);
     if (numFrames > 0)
     {
-        if (ms_outputFile.is_open())
+        int32_t channels = AAudioStream_getChannelCount(stream);
+        int32_t bytesPerFrame = _getBytesPerSample(AAudioStream_getFormat(stream)) * channels;
+        if (((std::ofstream *)userData)->is_open())
         {
-            ms_outputFile.write(static_cast<const char *>(audioData), numFrames * ms_bytesPerFrame);
+            ((std::ofstream *)userData)->write(static_cast<const char *>(audioData), numFrames * bytesPerFrame);
             // ALOGD("aaudio dataCallback, numFrames:%d\n", numFrames);
         }
         else
@@ -249,7 +224,6 @@ AAudioRecorder::dataCallback(AAudioStream *stream, void *userData, void *audioDa
             ALOGI("aaudio dataCallback end\n");
             return AAUDIO_CALLBACK_RESULT_STOP;
         }
-        ms_totalBytesRead += numFrames * ms_bytesPerFrame;
     }
     return AAUDIO_CALLBACK_RESULT_CONTINUE;
 }
@@ -259,6 +233,22 @@ void AAudioRecorder::errorCallback(AAudioStream *stream, void *userData, aaudio_
     ALOGI("errorCallback\n");
 }
 #endif
+
+int32_t AAudioRecorder::_getBytesPerSample(aaudio_format_t format)
+{
+    switch (format)
+    {
+    case AAUDIO_FORMAT_PCM_I16:
+        return 2;
+    case AAUDIO_FORMAT_PCM_I24_PACKED:
+        return 3;
+    case AAUDIO_FORMAT_PCM_I32:
+    case AAUDIO_FORMAT_PCM_FLOAT:
+        return 4;
+    default:
+        return 2;
+    }
+}
 
 AAudioRecorder *AARecorder{nullptr};
 extern "C" JNIEXPORT void JNICALL
