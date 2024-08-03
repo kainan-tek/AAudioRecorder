@@ -27,7 +27,8 @@ project("aaudiorecorder")
 add_library(${CMAKE_PROJECT_NAME} SHARED
         # List C/C++ source files with relative paths to this CMakeLists.txt.
         aaudio-recorder.cpp
-        wav-header.cpp)
+        wav-header.cpp
+        aaudio-buffer.cpp)
 
 # Specifies libraries CMake should link to your target library. You
 # can link libraries from various origins, such as libraries defined in this

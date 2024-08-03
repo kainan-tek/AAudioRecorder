@@ -6,6 +6,7 @@
 #define AAUDIORECORDER_AAUDIO_RECORDER_H
 
 #include <aaudio/AAudio.h>
+#include "aaudio-buffer.h"
 
 #define ENABLE_CALLBACK
 #define USE_WAV_HEADER
@@ -13,6 +14,13 @@
 
 class AAudioRecorder
 {
+public:
+    AAudioRecorder();
+    ~AAudioRecorder();
+
+    void startAAudioCapture();
+    void stopAAudioCapture();
+
 private:
     aaudio_input_preset_t m_inputPreset;
     int32_t m_sampleRate;
@@ -28,21 +36,14 @@ private:
     bool m_isPlaying;
     AAudioStream *m_aaudioStream;
     std::string m_audioFile;
-    std::ofstream m_outputFile;
 
     void _stopCapture();
     static int32_t _getBytesPerSample(aaudio_format_t format);
 
 #ifdef ENABLE_CALLBACK
+    SharedBuffer *m_sharedBuf;
     static aaudio_data_callback_result_t dataCallback(AAudioStream *stream, void *userData, void *audioData, int32_t numFrames);
     static void errorCallback(AAudioStream *stream, void *userData, aaudio_result_t error);
 #endif
-
-public:
-    AAudioRecorder();
-    ~AAudioRecorder();
-
-    void startAAudioCapture();
-    void stopAAudioCapture();
 };
 #endif // AAUDIORECORDER_AAUDIO_RECORDER_H
