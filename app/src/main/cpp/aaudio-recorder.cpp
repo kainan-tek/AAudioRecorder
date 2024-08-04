@@ -141,7 +141,7 @@ void AAudioRecorder::startAAudioCapture()
     while (m_aaudioStream)
     {
 #ifdef ENABLE_CALLBACK
-        usleep(10 * 1000);
+        usleep(8 * 1000);
         bool ret = m_sharedBuf->consume(bufWrite2File, m_framesPerBurst * bytesPerFrame * 2);
         if (ret)
         {
