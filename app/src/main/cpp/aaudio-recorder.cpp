@@ -20,7 +20,7 @@ AAudioRecorder::AAudioRecorder() : m_inputPreset(AAUDIO_INPUT_PRESET_VOICE_RECOG
                                    m_direction(AAUDIO_DIRECTION_INPUT),
                                    m_sharingMode(AAUDIO_SHARING_MODE_SHARED),
                                    m_performanceMode(AAUDIO_PERFORMANCE_MODE_LOW_LATENCY),
-                                   m_isPlaying(false),
+                                   m_isRecording(false),
                                    m_aaudioStream(nullptr),
                                    m_audioFile("/data/record_48k_1ch_16bit.wav")
 {
@@ -32,14 +32,14 @@ AAudioRecorder::AAudioRecorder() : m_inputPreset(AAUDIO_INPUT_PRESET_VOICE_RECOG
 AAudioRecorder::~AAudioRecorder() = default;
 
 void get_format_time(char *);
-void AAudioRecorder::startAAudioCapture()
+bool AAudioRecorder::startAAudioCapture()
 {
     AAudioStreamBuilder *builder{nullptr};
     aaudio_result_t result = AAudio_createStreamBuilder(&builder);
     if (result != AAUDIO_OK)
     {
         ALOGE("AAudio_createStreamBuilder() returned %d %s\n", result, AAudio_convertResultToText(result));
-        return;
+        return false;
     }
     AAudioStreamBuilder_setInputPreset(builder, m_inputPreset);
     AAudioStreamBuilder_setSampleRate(builder, m_sampleRate);
@@ -67,7 +67,7 @@ void AAudioRecorder::startAAudioCapture()
     if (result != AAUDIO_OK)
     {
         ALOGE("AAudioStreamBuilder_openStream() returned %d %s\n", result, AAudio_convertResultToText(result));
-        return;
+        return false;
     }
     m_framesPerBurst = AAudioStream_getFramesPerBurst(m_aaudioStream);
     AAudioStream_setBufferSizeInFrames(m_aaudioStream, m_numOfBursts * m_framesPerBurst);
@@ -103,7 +103,7 @@ void AAudioRecorder::startAAudioCapture()
     {
         ALOGE("AAudioRecorder error opening file\n");
         AAudioStream_close(m_aaudioStream);
-        return;
+        return false;
     }
 
 #ifdef USE_WAV_HEADER
@@ -115,7 +115,7 @@ void AAudioRecorder::startAAudioCapture()
         ALOGE("writeWAVHeader failed\n");
         AAudioStream_close(m_aaudioStream);
         outputFile.close();
-        return;
+        return false;
     }
 #endif
 
@@ -128,7 +128,7 @@ void AAudioRecorder::startAAudioCapture()
             AAudioStream_close(m_aaudioStream);
             m_aaudioStream = nullptr;
         }
-        return;
+        return false;
     }
     aaudio_stream_state_t state = AAudioStream_getState(m_aaudioStream);
     ALOGI("after request start, state = %s\n", AAudio_convertStreamStateToText(state));
@@ -136,7 +136,7 @@ void AAudioRecorder::startAAudioCapture()
 #ifdef ENABLE_CALLBACK
     m_sharedBuf->setBufSize(m_framesPerBurst * bytesPerFrame * 8);
 #endif
-    m_isPlaying = true;
+    m_isRecording = true;
     char *bufWrite2File = new char[m_framesPerBurst * bytesPerFrame * 2];
     while (m_aaudioStream)
     {
@@ -159,9 +159,9 @@ void AAudioRecorder::startAAudioCapture()
         if (totalBytesRead >= MAX_DATA_SIZE)
         {
             ALOGE("AudioRecord data size exceeds limit: %d MB, stop record\n", MAX_DATA_SIZE / (1024 * 1024));
-            m_isPlaying = false;
+            m_isRecording = false;
         }
-        if (!m_isPlaying)
+        if (!m_isRecording)
         {
 #ifdef USE_WAV_HEADER
             UpdateSizes(outputFile, totalBytesRead); // update RIFF chunk size and data chunk size
@@ -178,11 +178,13 @@ void AAudioRecorder::startAAudioCapture()
             }
         }
     }
+    return true;
 }
 
-void AAudioRecorder::stopAAudioCapture()
+bool AAudioRecorder::stopAAudioCapture()
 {
-    m_isPlaying = false;
+    m_isRecording = false;
+    return true;
 }
 
 void AAudioRecorder::_stopCapture()

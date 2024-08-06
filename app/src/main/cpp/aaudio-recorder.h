@@ -18,8 +18,8 @@ public:
     AAudioRecorder();
     ~AAudioRecorder();
 
-    void startAAudioCapture();
-    void stopAAudioCapture();
+    bool startAAudioCapture();
+    bool stopAAudioCapture();
 
 private:
     aaudio_input_preset_t m_inputPreset;
@@ -33,7 +33,7 @@ private:
     aaudio_sharing_mode_t m_sharingMode;
     aaudio_performance_mode_t m_performanceMode;
 
-    bool m_isPlaying;
+    bool m_isRecording;
     AAudioStream *m_aaudioStream;
     std::string m_audioFile;
 
