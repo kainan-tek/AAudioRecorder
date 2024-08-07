@@ -1,19 +1,24 @@
 #include <jni.h>
 #include <string>
-#include <unistd.h>
 #include <iostream>
 #include <fstream>
 #include <vector>
 #include <ctime>
-#include <aaudio/AAudio.h>
+#include <unistd.h>
 #include "common.h"
 #include "aaudio-recorder.h"
 #include "wav-header.h"
 
+void get_format_time(char *format_time);
+int32_t getBytesPerSample(aaudio_format_t format);
+#ifdef ENABLE_CALLBACK
+aaudio_data_callback_result_t dataCallback(AAudioStream *stream, void *userData, void *audioData, int32_t numFrames);
+void errorCallback(AAudioStream *stream, void *userData, aaudio_result_t result);
+#endif
+
 AAudioRecorder::AAudioRecorder() : m_inputPreset(AAUDIO_INPUT_PRESET_VOICE_RECOGNITION),
                                    m_sampleRate(48000),
                                    m_channelCount(1),
-                                   // m_channelMask(AAUDIO_CHANNEL_MONO),
                                    m_format(AAUDIO_FORMAT_PCM_I16),
                                    m_framesPerBurst(480),
                                    m_numOfBursts(2),
@@ -31,7 +36,6 @@ AAudioRecorder::AAudioRecorder() : m_inputPreset(AAUDIO_INPUT_PRESET_VOICE_RECOG
 
 AAudioRecorder::~AAudioRecorder() = default;
 
-void get_format_time(char *);
 bool AAudioRecorder::startAAudioCapture()
 {
     AAudioStreamBuilder *builder{nullptr};
@@ -80,7 +84,7 @@ bool AAudioRecorder::startAAudioCapture()
           "framesPerBurst:%d\n",
           actualSampleRate, actualChannelCount, actualDataFormat, actualBufferSize, m_framesPerBurst);
 
-    int32_t bytesPerFrame = _getBytesPerSample(actualDataFormat) * actualChannelCount;
+    int32_t bytesPerFrame = getBytesPerSample(actualDataFormat) * actualChannelCount;
     /************** set audio file path **************/
     char audioFileArr[256] = {0};
     char formatTime[32] = {0};
@@ -219,30 +223,14 @@ void AAudioRecorder::_stopCapture()
     }
 }
 
-#ifdef ENABLE_CALLBACK
-aaudio_data_callback_result_t
-AAudioRecorder::dataCallback(AAudioStream *stream, void *userData, void *audioData, int32_t numFrames)
+void get_format_time(char *format_time)
 {
-    if (numFrames > 0)
-    {
-        int32_t channels = AAudioStream_getChannelCount(stream);
-        int32_t bytesPerFrame = _getBytesPerSample(AAudioStream_getFormat(stream)) * channels;
-        bool ret = ((SharedBuffer *)userData)->produce((char *)audioData, numFrames * bytesPerFrame);
-        if (!ret)
-        {
-            ALOGD("can't write to buffer, buffer is full\n");
-        }
-    }
-    return AAUDIO_CALLBACK_RESULT_CONTINUE;
+    time_t t = time(nullptr);
+    struct tm *now = localtime(&t);
+    strftime(format_time, 32, "%Y%m%d_%H.%M.%S", now);
 }
 
-void AAudioRecorder::errorCallback(AAudioStream *stream, void *userData, aaudio_result_t error)
-{
-    ALOGE("errorCallback\n");
-}
-#endif
-
-int32_t AAudioRecorder::_getBytesPerSample(aaudio_format_t format)
+int32_t getBytesPerSample(aaudio_format_t format)
 {
     switch (format)
     {
@@ -258,12 +246,27 @@ int32_t AAudioRecorder::_getBytesPerSample(aaudio_format_t format)
     }
 }
 
-void get_format_time(char *format_time)
+#ifdef ENABLE_CALLBACK
+aaudio_data_callback_result_t dataCallback(AAudioStream *stream, void *userData, void *audioData, int32_t numFrames)
 {
-    time_t t = time(nullptr);
-    struct tm *now = localtime(&t);
-    strftime(format_time, 32, "%Y%m%d_%H.%M.%S", now);
+    if (numFrames > 0)
+    {
+        int32_t channels = AAudioStream_getChannelCount(stream);
+        int32_t bytesPerFrame = getBytesPerSample(AAudioStream_getFormat(stream)) * channels;
+        bool ret = ((SharedBuffer *)userData)->produce((char *)audioData, numFrames * bytesPerFrame);
+        if (!ret)
+        {
+            ALOGE("can't write to buffer, buffer is full\n");
+        }
+    }
+    return AAUDIO_CALLBACK_RESULT_CONTINUE;
 }
+
+void errorCallback(AAudioStream *stream, void *userData, aaudio_result_t result)
+{
+    ALOGE("AAudio errorCallback, result: %d %s\n", result, AAudio_convertResultToText(result));
+}
+#endif
 
 AAudioRecorder *AARecorder{nullptr};
 extern "C" JNIEXPORT void JNICALL

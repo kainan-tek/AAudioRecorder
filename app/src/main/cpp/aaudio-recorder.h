@@ -25,7 +25,6 @@ private:
     aaudio_input_preset_t m_inputPreset;
     int32_t m_sampleRate;
     int32_t m_channelCount;
-    // aaudio_channel_mask_t m_channelMask;
     aaudio_format_t m_format;
     int32_t m_framesPerBurst;
     int32_t m_numOfBursts;
@@ -36,14 +35,10 @@ private:
     bool m_isRecording;
     AAudioStream *m_aaudioStream;
     std::string m_audioFile;
-
-    void _stopCapture();
-    static int32_t _getBytesPerSample(aaudio_format_t format);
-
 #ifdef ENABLE_CALLBACK
     SharedBuffer *m_sharedBuf;
-    static aaudio_data_callback_result_t dataCallback(AAudioStream *stream, void *userData, void *audioData, int32_t numFrames);
-    static void errorCallback(AAudioStream *stream, void *userData, aaudio_result_t error);
 #endif
+
+    void _stopCapture();
 };
 #endif // AAUDIORECORDER_AAUDIO_RECORDER_H
