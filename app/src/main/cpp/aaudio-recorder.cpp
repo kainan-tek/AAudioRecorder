@@ -13,28 +13,37 @@ void get_format_time(char *format_time);
 int32_t getBytesPerSample(aaudio_format_t format);
 #ifdef ENABLE_CALLBACK
 aaudio_data_callback_result_t dataCallback(AAudioStream *stream, void *userData, void *audioData, int32_t numFrames);
-void errorCallback(AAudioStream *stream, void *userData, aaudio_result_t result);
+void errorCallback([[maybe_unused]] [[maybe_unused]] AAudioStream *stream, [[maybe_unused]] void *userData, aaudio_result_t result);
 #endif
 
-AAudioRecorder::AAudioRecorder() : m_inputPreset(AAUDIO_INPUT_PRESET_VOICE_RECOGNITION),
-                                   m_sampleRate(48000),
-                                   m_channelCount(1),
-                                   m_format(AAUDIO_FORMAT_PCM_I16),
-                                   m_framesPerBurst(480),
-                                   m_numOfBursts(2),
-                                   m_direction(AAUDIO_DIRECTION_INPUT),
-                                   m_sharingMode(AAUDIO_SHARING_MODE_SHARED),
-                                   m_performanceMode(AAUDIO_PERFORMANCE_MODE_LOW_LATENCY),
-                                   m_isRecording(false),
-                                   m_aaudioStream(nullptr),
-                                   m_audioFile("/data/record_48k_1ch_16bit.wav")
+AAudioRecorder::AAudioRecorder() : mInputPreset(AAUDIO_INPUT_PRESET_VOICE_RECOGNITION),
+                                   mSampleRate(48000),
+                                   mChannelCount(1),
+                                   mFormat(AAUDIO_FORMAT_PCM_I16),
+                                   mFramesPerBurst(480),
+                                   mNumOfBursts(2),
+                                   mDirection(AAUDIO_DIRECTION_INPUT),
+                                   mSharingMode(AAUDIO_SHARING_MODE_SHARED),
+                                   mPerformanceMode(AAUDIO_PERFORMANCE_MODE_LOW_LATENCY),
+                                   mIsRecording(false),
+                                   mAAudioStream(nullptr),
+                                   mAudioFile("/data/record_48k_1ch_16bit.wav")
 {
 #ifdef ENABLE_CALLBACK
-    m_sharedBuf = new SharedBuffer(static_cast<size_t>(m_sampleRate / 1000 * 40 * m_channelCount * 2));
+    mSharedBuf = new SharedBuffer(static_cast<size_t>(mSampleRate / 1000 * 40 * mChannelCount * 2));
 #endif
 }
 
-AAudioRecorder::~AAudioRecorder() = default;
+AAudioRecorder::~AAudioRecorder()
+{
+#ifdef ENABLE_CALLBACK
+    if (mSharedBuf)
+    {
+        delete mSharedBuf;
+        mSharedBuf = nullptr;
+    }
+#endif
+}
 
 bool AAudioRecorder::startAAudioCapture()
 {
@@ -45,44 +54,44 @@ bool AAudioRecorder::startAAudioCapture()
         ALOGE("AAudio_createStreamBuilder() returned %d %s\n", result, AAudio_convertResultToText(result));
         return false;
     }
-    AAudioStreamBuilder_setInputPreset(builder, m_inputPreset);
-    AAudioStreamBuilder_setSampleRate(builder, m_sampleRate);
-    AAudioStreamBuilder_setChannelCount(builder, m_channelCount);
+    AAudioStreamBuilder_setInputPreset(builder, mInputPreset);
+    AAudioStreamBuilder_setSampleRate(builder, mSampleRate);
+    AAudioStreamBuilder_setChannelCount(builder, mChannelCount);
     // AAudioStreamBuilder_setChannelMask(builder, m_channelMask);
-    AAudioStreamBuilder_setFormat(builder, m_format);
-    AAudioStreamBuilder_setDirection(builder, m_direction);
-    AAudioStreamBuilder_setPerformanceMode(builder, m_performanceMode);
-    AAudioStreamBuilder_setSharingMode(builder, m_sharingMode);
-    AAudioStreamBuilder_setBufferCapacityInFrames(builder, m_sampleRate / 1000 * 40);
+    AAudioStreamBuilder_setFormat(builder, mFormat);
+    AAudioStreamBuilder_setDirection(builder, mDirection);
+    AAudioStreamBuilder_setPerformanceMode(builder, mPerformanceMode);
+    AAudioStreamBuilder_setSharingMode(builder, mSharingMode);
+    AAudioStreamBuilder_setBufferCapacityInFrames(builder, mSampleRate / 1000 * 40);
     // AAudioStreamBuilder_setDeviceId(builder, AAUDIO_UNSPECIFIED);
     // AAudioStreamBuilder_setFramesPerDataCallback(builder, AAUDIO_UNSPECIFIED);
     // AAudioStreamBuilder_setAllowedCapturePolicy(builder, AAUDIO_ALLOW_CAPTURE_BY_ALL);
     // AAudioStreamBuilder_setPrivacySensitive(builder, false);
 #ifdef ENABLE_CALLBACK
-    AAudioStreamBuilder_setDataCallback(builder, dataCallback, (void *)m_sharedBuf);
+    AAudioStreamBuilder_setDataCallback(builder, dataCallback, (void *)mSharedBuf);
     AAudioStreamBuilder_setErrorCallback(builder, errorCallback, nullptr);
 #endif
-    ALOGI("set AAudio params: InputPreset:%d, SampleRate:%d, ChannelCount:%d, Format:%d\n", m_inputPreset, m_sampleRate,
-          m_channelCount, m_format);
+    ALOGI("set AAudio params: InputPreset:%d, SampleRate:%d, ChannelCount:%d, Format:%d\n", mInputPreset, mSampleRate,
+          mChannelCount, mFormat);
 
     // Open an AAudioStream using the Builder.
-    result = AAudioStreamBuilder_openStream(builder, &m_aaudioStream);
+    result = AAudioStreamBuilder_openStream(builder, &mAAudioStream);
     AAudioStreamBuilder_delete(builder);
     if (result != AAUDIO_OK)
     {
         ALOGE("AAudioStreamBuilder_openStream() returned %d %s\n", result, AAudio_convertResultToText(result));
         return false;
     }
-    m_framesPerBurst = AAudioStream_getFramesPerBurst(m_aaudioStream);
-    AAudioStream_setBufferSizeInFrames(m_aaudioStream, m_numOfBursts * m_framesPerBurst);
+    mFramesPerBurst = AAudioStream_getFramesPerBurst(mAAudioStream);
+    AAudioStream_setBufferSizeInFrames(mAAudioStream, mNumOfBursts * mFramesPerBurst);
 
-    int32_t actualSampleRate = AAudioStream_getSampleRate(m_aaudioStream);
-    int32_t actualChannelCount = AAudioStream_getChannelCount(m_aaudioStream);
-    int32_t actualDataFormat = AAudioStream_getFormat(m_aaudioStream);
-    int32_t actualBufferSize = AAudioStream_getBufferSizeInFrames(m_aaudioStream);
+    int32_t actualSampleRate = AAudioStream_getSampleRate(mAAudioStream);
+    int32_t actualChannelCount = AAudioStream_getChannelCount(mAAudioStream);
+    int32_t actualDataFormat = AAudioStream_getFormat(mAAudioStream);
+    int32_t actualBufferSize = AAudioStream_getBufferSizeInFrames(mAAudioStream);
     ALOGI("get AAudio params: actualSampleRate:%d, actualChannelCount:%d, actualDataFormat:%d, actualBufferSize:%d, "
           "framesPerBurst:%d\n",
-          actualSampleRate, actualChannelCount, actualDataFormat, actualBufferSize, m_framesPerBurst);
+          actualSampleRate, actualChannelCount, actualDataFormat, actualBufferSize, mFramesPerBurst);
 
     int32_t bytesPerFrame = getBytesPerSample(actualDataFormat) * actualChannelCount;
     /************** set audio file path **************/
@@ -98,15 +107,15 @@ bool AAudioRecorder::startAAudioCapture()
     snprintf(audioFileArr, sizeof(audioFileArr), "/data/record_%dk_%dch_%dbit_%s.pcm", actualSampleRate / 1000,
              actualChannelCount, bytesPerFrame / actualChannelCount * 8, formatTime);
 #endif
-    m_audioFile = std::string(audioFileArr);
-    ALOGI("Audio file path: %s\n", m_audioFile.c_str());
+    mAudioFile = std::string(audioFileArr);
+    ALOGI("Audio file path: %s\n", mAudioFile.c_str());
 
     /************** open output file **************/
-    std::ofstream outputFile(m_audioFile, std::ios::binary | std::ios::out);
+    std::ofstream outputFile(mAudioFile, std::ios::binary | std::ios::out);
     if (!outputFile.is_open() || outputFile.fail())
     {
         ALOGE("AAudioRecorder error opening file\n");
-        AAudioStream_close(m_aaudioStream);
+        AAudioStream_close(mAAudioStream);
         return false;
     }
 
@@ -117,55 +126,55 @@ bool AAudioRecorder::startAAudioCapture()
                         bytesPerFrame / actualChannelCount * 8))
     {
         ALOGE("writeWAVHeader failed\n");
-        AAudioStream_close(m_aaudioStream);
+        AAudioStream_close(mAAudioStream);
         outputFile.close();
         return false;
     }
 #endif
 
-    result = AAudioStream_requestStart(m_aaudioStream);
+    result = AAudioStream_requestStart(mAAudioStream);
     if (result != AAUDIO_OK)
     {
         ALOGE("AAudioStream_requestStart returned %d %s\n", result, AAudio_convertResultToText(result));
-        if (m_aaudioStream != nullptr)
+        if (mAAudioStream != nullptr)
         {
-            AAudioStream_close(m_aaudioStream);
-            m_aaudioStream = nullptr;
+            AAudioStream_close(mAAudioStream);
+            mAAudioStream = nullptr;
         }
         return false;
     }
-    aaudio_stream_state_t state = AAudioStream_getState(m_aaudioStream);
+    aaudio_stream_state_t state = AAudioStream_getState(mAAudioStream);
     ALOGI("after request start, state = %s\n", AAudio_convertStreamStateToText(state));
 
 #ifdef ENABLE_CALLBACK
-    m_sharedBuf->setBufSize(m_framesPerBurst * bytesPerFrame * 8);
+    mSharedBuf->setBufSize(mFramesPerBurst * bytesPerFrame * 8);
 #endif
-    m_isRecording = true;
-    char *bufWrite2File = new char[m_framesPerBurst * bytesPerFrame * 2];
-    while (m_aaudioStream)
+    mIsRecording = true;
+    char *bufWrite2File = new char[mFramesPerBurst * bytesPerFrame * 2];
+    while (mAAudioStream)
     {
 #ifdef ENABLE_CALLBACK
         usleep(8 * 1000);
-        bool ret = m_sharedBuf->consume(bufWrite2File, m_framesPerBurst * bytesPerFrame * 2);
+        bool ret = mSharedBuf->consume(bufWrite2File, mFramesPerBurst * bytesPerFrame * 2);
         if (ret)
         {
-            outputFile.write(bufWrite2File, m_framesPerBurst * bytesPerFrame);
+            outputFile.write(bufWrite2File, mFramesPerBurst * bytesPerFrame);
         }
 #else
-        int32_t framesRead = AAudioStream_read(m_aaudioStream, (void *)bufWrite2File, m_framesPerBurst, 60 * 1000 * 1000);
+        int32_t framesRead = AAudioStream_read(mAAudioStream, (void *)bufWrite2File, mFramesPerBurst, 60 * 1000 * 1000);
         if (framesRead)
         {
-            // ALOGD("aaudio read, framesRead:%d, framesPerBurst:%d\n", framesRead, m_framesPerBurst);
+            // ALOGD("aaudio read, framesRead:%d, framesPerBurst:%d\n", framesRead, mFramesPerBurst);
             outputFile.write(bufWrite2File, framesRead * bytesPerFrame);
         }
 #endif
-        int64_t totalBytesRead = AAudioStream_getFramesRead(m_aaudioStream) * bytesPerFrame;
+        int64_t totalBytesRead = AAudioStream_getFramesRead(mAAudioStream) * bytesPerFrame;
         if (totalBytesRead >= MAX_DATA_SIZE)
         {
             ALOGE("AudioRecord data size exceeds limit: %d MB, stop record\n", MAX_DATA_SIZE / (1024 * 1024));
-            m_isRecording = false;
+            mIsRecording = false;
         }
-        if (!m_isRecording)
+        if (!mIsRecording)
         {
 #ifdef USE_WAV_HEADER
             UpdateSizes(outputFile, totalBytesRead); // update RIFF chunk size and data chunk size
@@ -187,22 +196,22 @@ bool AAudioRecorder::startAAudioCapture()
 
 bool AAudioRecorder::stopAAudioCapture()
 {
-    m_isRecording = false;
+    mIsRecording = false;
     return true;
 }
 
 void AAudioRecorder::_stopCapture()
 {
-    int32_t xRunCount = AAudioStream_getXRunCount(m_aaudioStream);
+    int32_t xRunCount = AAudioStream_getXRunCount(mAAudioStream);
     ALOGI("AAudioStream_getXRunCount %d\n", xRunCount);
-    aaudio_result_t result = AAudioStream_requestStop(m_aaudioStream);
+    aaudio_result_t result = AAudioStream_requestStop(mAAudioStream);
     if (result == AAUDIO_OK)
     {
-        aaudio_stream_state_t currentState = AAudioStream_getState(m_aaudioStream);
+        aaudio_stream_state_t currentState = AAudioStream_getState(mAAudioStream);
         aaudio_stream_state_t inputState = currentState;
         while (result == AAUDIO_OK && currentState != AAUDIO_STREAM_STATE_STOPPED)
         {
-            result = AAudioStream_waitForStateChange(m_aaudioStream, inputState, &currentState, 60 * 1000 * 1000);
+            result = AAudioStream_waitForStateChange(mAAudioStream, inputState, &currentState, 60 * 1000 * 1000);
             inputState = currentState;
         }
     }
@@ -211,15 +220,15 @@ void AAudioRecorder::_stopCapture()
         ALOGE("aaudio request stop error, ret %d %s\n", result, AAudio_convertResultToText(result));
     }
 
-    aaudio_stream_state_t currentState = AAudioStream_getState(m_aaudioStream);
+    aaudio_stream_state_t currentState = AAudioStream_getState(mAAudioStream);
     if (currentState != AAUDIO_STREAM_STATE_STOPPED)
     {
         ALOGW("AAudioStream_getState %s\n", AAudio_convertStreamStateToText(currentState));
     }
-    if (m_aaudioStream != nullptr)
+    if (mAAudioStream)
     {
-        AAudioStream_close(m_aaudioStream);
-        m_aaudioStream = nullptr;
+        AAudioStream_close(mAAudioStream);
+        mAAudioStream = nullptr;
     }
 }
 
@@ -253,6 +262,10 @@ aaudio_data_callback_result_t dataCallback(AAudioStream *stream, void *userData,
     {
         int32_t channels = AAudioStream_getChannelCount(stream);
         int32_t bytesPerFrame = getBytesPerSample(AAudioStream_getFormat(stream)) * channels;
+        if (!userData)
+        {
+            return AAUDIO_CALLBACK_RESULT_STOP;
+        }
         bool ret = ((SharedBuffer *)userData)->produce((char *)audioData, numFrames * bytesPerFrame);
         if (!ret)
         {
@@ -262,15 +275,17 @@ aaudio_data_callback_result_t dataCallback(AAudioStream *stream, void *userData,
     return AAUDIO_CALLBACK_RESULT_CONTINUE;
 }
 
-void errorCallback(AAudioStream *stream, void *userData, aaudio_result_t result)
+void errorCallback([[maybe_unused]] AAudioStream *stream, [[maybe_unused]] void *userData, aaudio_result_t result)
 {
     ALOGE("AAudio errorCallback, result: %d %s\n", result, AAudio_convertResultToText(result));
 }
+
 #endif
 
 AAudioRecorder *AARecorder{nullptr};
 extern "C" JNIEXPORT void JNICALL
-Java_com_example_aaudiorecorder_MainActivity_startAAudioCaptureFromJNI(JNIEnv *env, jobject thiz)
+Java_com_example_aaudiorecorder_MainActivity_startAAudioCaptureFromJNI([[maybe_unused]] JNIEnv *env,
+                                                                       [[maybe_unused]] jobject thiz)
 {
     // TODO: implement startAAudioCaptureFromJNI()
     AARecorder = new AAudioRecorder();
@@ -278,7 +293,8 @@ Java_com_example_aaudiorecorder_MainActivity_startAAudioCaptureFromJNI(JNIEnv *e
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_example_aaudiorecorder_MainActivity_stopAAudioCaptureFromJNI(JNIEnv *env, jobject thiz)
+Java_com_example_aaudiorecorder_MainActivity_stopAAudioCaptureFromJNI([[maybe_unused]] JNIEnv *env,
+                                                                      [[maybe_unused]] jobject thiz)
 {
     // TODO: implement stopAAudioCaptureFromJNI()
     AARecorder->stopAAudioCapture();
