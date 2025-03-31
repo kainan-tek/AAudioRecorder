@@ -48,6 +48,8 @@ AAudioRecorder::~AAudioRecorder()
 bool AAudioRecorder::startAAudioCapture()
 {
     AAudioStreamBuilder *builder{nullptr};
+    aaudio_stream_state_t state = AAUDIO_STREAM_STATE_UNINITIALIZED;
+    char *bufWrite2File = nullptr;
     aaudio_result_t result = AAudio_createStreamBuilder(&builder);
     if (result != AAUDIO_OK)
     {
@@ -109,26 +111,19 @@ bool AAudioRecorder::startAAudioCapture()
 #endif
     mAudioFile = std::string(audioFileArr);
     ALOGI("Audio file path: %s\n", mAudioFile.c_str());
-
-    /************** open output file **************/
     std::ofstream outputFile(mAudioFile, std::ios::binary | std::ios::out);
     if (!outputFile.is_open() || outputFile.fail())
     {
         ALOGE("AAudioRecorder error opening file\n");
-        AAudioStream_close(mAAudioStream);
-        return false;
+        goto exit_label;
     }
-
 #ifdef USE_WAV_HEADER
     /************** write audio file header **************/
-    int32_t numSamples = 0;
-    if (!writeWAVHeader(outputFile, numSamples, actualSampleRate, actualChannelCount,
+    if (!writeWAVHeader(outputFile, 0, actualSampleRate, actualChannelCount,
                         bytesPerFrame / actualChannelCount * 8))
     {
         ALOGE("writeWAVHeader failed\n");
-        AAudioStream_close(mAAudioStream);
-        outputFile.close();
-        return false;
+        goto exit_label;
     }
 #endif
 
@@ -136,23 +131,24 @@ bool AAudioRecorder::startAAudioCapture()
     if (result != AAUDIO_OK)
     {
         ALOGE("AAudioStream_requestStart returned %d %s\n", result, AAudio_convertResultToText(result));
-        if (mAAudioStream != nullptr)
-        {
-            AAudioStream_close(mAAudioStream);
-            mAAudioStream = nullptr;
-        }
-        return false;
+        goto exit_label;
     }
-    aaudio_stream_state_t state = AAudioStream_getState(mAAudioStream);
+    state = AAudioStream_getState(mAAudioStream);
     ALOGI("after request start, state = %s\n", AAudio_convertStreamStateToText(state));
 
 #ifdef ENABLE_CALLBACK
     mSharedBuf->setBufSize(mFramesPerBurst * bytesPerFrame * 8);
 #endif
+    bufWrite2File = new (std::nothrow) char[mFramesPerBurst * bytesPerFrame * 2];
+    if (!bufWrite2File)
+    {
+        ALOGE("AAudioRecorder new bufWrite2File failed\n");
+        goto exit_label;
+    }
     mIsRecording = true;
-    char *bufWrite2File = new char[mFramesPerBurst * bytesPerFrame * 2];
     while (mAAudioStream)
     {
+        memset(bufWrite2File, 0, mFramesPerBurst * bytesPerFrame * 2);
 #ifdef ENABLE_CALLBACK
         usleep(8 * 1000);
         bool ret = mSharedBuf->consume(bufWrite2File, mFramesPerBurst * bytesPerFrame * 2);
@@ -161,17 +157,27 @@ bool AAudioRecorder::startAAudioCapture()
             outputFile.write(bufWrite2File, mFramesPerBurst * bytesPerFrame);
         }
 #else
-        int32_t framesRead = AAudioStream_read(mAAudioStream, (void *)bufWrite2File, mFramesPerBurst, 60 * 1000 * 1000);
-        if (framesRead)
+        // block read as timeoutNanoseconds is not zero
+        int32_t rst = AAudioStream_read(mAAudioStream, (void *)bufWrite2File, mFramesPerBurst, 60 * 1000 * 1000);
+        if (rst >= 0)
         {
-            // ALOGD("aaudio read, framesRead:%d, framesPerBurst:%d\n", framesRead, mFramesPerBurst);
-            outputFile.write(bufWrite2File, framesRead * bytesPerFrame);
+            // ALOGD("AAudio actually read frames %d, should read frames %d\n", rst, mFramesPerBurst);
+            if (rst != mFramesPerBurst)
+            {
+                ALOGW("AAudio actually read frames %d, should read frames %d\n", rst, mFramesPerBurst);
+            }
+            outputFile.write(bufWrite2File, mFramesPerBurst * bytesPerFrame);
+        }
+        else
+        {
+            ALOGE("AAudio read error\n");
+            mIsRecording = false;
         }
 #endif
         int64_t totalBytesRead = AAudioStream_getFramesRead(mAAudioStream) * bytesPerFrame;
         if (totalBytesRead >= MAX_DATA_SIZE)
         {
-            ALOGE("AudioRecord data size exceeds limit: %d MB, stop record\n", MAX_DATA_SIZE / (1024 * 1024));
+            ALOGE("AAudio read data size exceeds limit: %d MB, stop record\n", MAX_DATA_SIZE / (1024 * 1024));
             mIsRecording = false;
         }
         if (!mIsRecording)
@@ -180,17 +186,22 @@ bool AAudioRecorder::startAAudioCapture()
             UpdateSizes(outputFile, totalBytesRead); // update RIFF chunk size and data chunk size
 #endif
             _stopCapture();
-            if (outputFile.is_open())
-            {
-                outputFile.close();
-            }
-            if (bufWrite2File)
-            {
-                delete[] bufWrite2File;
-                bufWrite2File = nullptr;
-            }
+            goto exit_label;
         }
     }
+
+exit_label:
+    if (mAAudioStream != nullptr)
+    {
+        AAudioStream_close(mAAudioStream);
+        mAAudioStream = nullptr;
+    }
+    if (outputFile.is_open())
+    {
+        outputFile.close();
+    }
+    delete[] bufWrite2File;
+
     return true;
 }
 
@@ -279,13 +290,11 @@ void errorCallback([[maybe_unused]] AAudioStream *stream, [[maybe_unused]] void 
 {
     ALOGE("AAudio errorCallback, result: %d %s\n", result, AAudio_convertResultToText(result));
 }
-
-#endif
+#endif // ENABLE_CALLBACK
 
 AAudioRecorder *AARecorder{nullptr};
 extern "C" JNIEXPORT void JNICALL
-Java_com_example_aaudiorecorder_MainActivity_startAAudioCaptureFromJNI([[maybe_unused]] JNIEnv *env,
-                                                                       [[maybe_unused]] jobject thiz)
+Java_com_example_aaudiorecorder_MainActivity_startAAudioCaptureFromJNI([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz)
 {
     // TODO: implement startAAudioCaptureFromJNI()
     AARecorder = new AAudioRecorder();
@@ -293,8 +302,7 @@ Java_com_example_aaudiorecorder_MainActivity_startAAudioCaptureFromJNI([[maybe_u
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_example_aaudiorecorder_MainActivity_stopAAudioCaptureFromJNI([[maybe_unused]] JNIEnv *env,
-                                                                      [[maybe_unused]] jobject thiz)
+Java_com_example_aaudiorecorder_MainActivity_stopAAudioCaptureFromJNI([[maybe_unused]] JNIEnv *env, [[maybe_unused]] jobject thiz)
 {
     // TODO: implement stopAAudioCaptureFromJNI()
     AARecorder->stopAAudioCapture();
