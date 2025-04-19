@@ -47,6 +47,7 @@ AAudioRecorder::~AAudioRecorder()
 
 bool AAudioRecorder::startAAudioCapture()
 {
+    bool isFileCreated = false;
     AAudioStreamBuilder *builder{nullptr};
     aaudio_stream_state_t state = AAUDIO_STREAM_STATE_UNINITIALIZED;
     char *bufWrite2File = nullptr;
@@ -114,16 +115,22 @@ bool AAudioRecorder::startAAudioCapture()
     std::ofstream outputFile(mAudioFile, std::ios::binary | std::ios::out);
     if (!outputFile.is_open() || outputFile.fail())
     {
+        isFileCreated = false;
         ALOGE("AAudioRecorder error opening file\n");
-        goto exit_label;
+        // goto exit_label;
+    } else {
+        isFileCreated = true;
     }
+
 #ifdef USE_WAV_HEADER
     /************** write audio file header **************/
-    if (!writeWAVHeader(outputFile, 0, actualSampleRate, actualChannelCount,
-                        bytesPerFrame / actualChannelCount * 8))
-    {
-        ALOGE("writeWAVHeader failed\n");
-        goto exit_label;
+    if (isFileCreated) {
+        if (!writeWAVHeader(outputFile, 0, actualSampleRate, actualChannelCount,
+                            bytesPerFrame / actualChannelCount * 8))
+        {
+            ALOGE("writeWAVHeader failed\n");
+            goto exit_label;
+        }
     }
 #endif
 
@@ -152,7 +159,7 @@ bool AAudioRecorder::startAAudioCapture()
 #ifdef ENABLE_CALLBACK
         usleep(8 * 1000);
         bool ret = mSharedBuf->consume(bufWrite2File, mFramesPerBurst * bytesPerFrame * 2);
-        if (ret)
+        if (ret && isFileCreated)
         {
             outputFile.write(bufWrite2File, mFramesPerBurst * bytesPerFrame);
         }
@@ -166,7 +173,9 @@ bool AAudioRecorder::startAAudioCapture()
             {
                 ALOGW("AAudio actually read frames %d, should read frames %d\n", rst, mFramesPerBurst);
             }
-            outputFile.write(bufWrite2File, mFramesPerBurst * bytesPerFrame);
+            if (isFileCreated) {
+                outputFile.write(bufWrite2File, mFramesPerBurst * bytesPerFrame);
+            }
         }
         else
         {
@@ -183,7 +192,9 @@ bool AAudioRecorder::startAAudioCapture()
         if (!mIsRecording)
         {
 #ifdef USE_WAV_HEADER
-            UpdateSizes(outputFile, totalBytesRead); // update RIFF chunk size and data chunk size
+            if (isFileCreated) {
+                UpdateSizes(outputFile, totalBytesRead); // update RIFF chunk size and data chunk size
+            }
 #endif
             _stopCapture();
             goto exit_label;
@@ -196,7 +207,7 @@ exit_label:
         AAudioStream_close(mAAudioStream);
         mAAudioStream = nullptr;
     }
-    if (outputFile.is_open())
+    if (isFileCreated && outputFile.is_open())
     {
         outputFile.close();
     }
