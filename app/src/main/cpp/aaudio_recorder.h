@@ -26,7 +26,7 @@ public:
     WavFile();
     ~WavFile();
 
-    // 打开WAV文件
+    // 以指定参数打开WAV文件
     bool open(const std::string& filePath, int32_t sampleRate, int32_t channelCount, aaudio_format_t format);
 
     // 关闭WAV文件
@@ -55,8 +55,8 @@ private:
         char format[4];         // "WAVE"
         char subchunk1Id[4];    // "fmt "
         uint32_t subchunk1Size; // 16 for PCM
-        uint16_t audioFormat;   // 1 for PCM
-        uint16_t numChannels;   // 1 or 2
+        uint16_t audioFormat;   // 1 for PCM, 3 for IEEE float
+        uint16_t numChannels;   // >0
         uint32_t sampleRate;    // 8000, 44100, etc.
         uint32_t byteRate;      // sampleRate * numChannels * bitsPerSample / 8
         uint16_t blockAlign;    // numChannels * bitsPerSample / 8
@@ -76,18 +76,14 @@ private:
     void writeHeader(uint32_t dataSize);
 };
 
-// 音频缓冲区管理
-// 前向声明AAudioRecorder类
-class AAudioRecorder;
-
 class AudioBuffer {
 public:
     explicit AudioBuffer(size_t bufferSize);
     ~AudioBuffer() = default;
 
-    bool write(const void* data, size_t size);
+    bool writeToBuffer(const void* data, size_t size);
     // 读取数据 - size参数通过引用返回实际读取的字节数
-    bool read(void* data, size_t& size);
+    bool readFromBuffer(void* data, size_t& size);
 
     bool isEmpty() const;
     void notifyAll();
@@ -138,24 +134,23 @@ public:
 
 private:
     // AAudio相关
-    AAudioStream* mStream;
     bool mIsInitialized = false; // 初始化为false
-    mutable std::mutex mRecordingMutex;
-    bool mIsRecording = false; // 初始化为false
+    bool mIsRecording = false;   // 初始化为false
+
+    aaudio_input_preset_t mInputPreset;
     int32_t mSampleRate;
     int32_t mChannelCount;
     aaudio_format_t mFormat;
     int32_t mBufferSizeInFrames;
-    aaudio_input_preset_t mInputPreset;
-
-    // 文件相关
-    WavFile mWavFile;
+    AAudioStream* mStream;
     AudioBuffer mAudioBuffer;
     std::string mRecordedFile; // 录音文件路径
+    mutable std::mutex mRecordingMutex;
+    WavFile mWavFile; // 录音文件管理对象
 
     // 线程相关
-    std::thread mReadThread;
-    std::thread mFileWriteThread;
+    std::thread mStreamReadThread; // 非回调模式：从音频流读取数据的线程
+    std::thread mBufferReadThread; // 回调模式：从缓冲区读取数据并写入文件的线程
 
     // 回调模式的数据回调函数
     static aaudio_data_callback_result_t
@@ -165,10 +160,10 @@ private:
     static void errorCallback(AAudioStream* stream, void* userData, aaudio_result_t error);
 
     // 非回调模式的音频读取线程
-    void readAudioData();
+    void readFromStreamAndWriteToFile();
 
     // 回调模式的文件写入线程
-    void fileWriteThread();
+    void readFromBufferAndWriteToFile();
 
     // 生成自动文件名
     std::string generateAutoFileName() const;

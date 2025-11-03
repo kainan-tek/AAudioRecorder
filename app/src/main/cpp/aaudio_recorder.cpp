@@ -17,10 +17,17 @@ bool WavFile::open(const std::string& filePath, int32_t sampleRate, int32_t chan
     // 关闭已打开的文件
     close();
 
-    // 打开新文件
-    mFileStream.open(filePath, std::ios::binary);
+    // 以写模式打开新文件
+    mFileStream.open(filePath, std::ios::binary | std::ios::out);
     if (!mFileStream.is_open()) {
         LOGE("Failed to open file for writing: %s", filePath.c_str());
+        return false;
+    }
+
+    // 检查是否可写
+    if (!mFileStream.good()) {
+        LOGE("File stream not in good state after opening");
+        close();
         return false;
     }
 
@@ -135,7 +142,7 @@ int32_t WavFile::getBytesPerSample(aaudio_format_t format) {
 // AudioBuffer类的实现
 AudioBuffer::AudioBuffer(size_t bufferSize) : mBuffer(bufferSize), mReadIndex(0), mWriteIndex(0), mIsFull(false) {}
 
-bool AudioBuffer::write(const void* data, size_t size) {
+bool AudioBuffer::writeToBuffer(const void* data, size_t size) {
     std::lock_guard<std::mutex> lock(mMutex);
 
     if (mIsFull) {
@@ -177,7 +184,7 @@ bool AudioBuffer::write(const void* data, size_t size) {
     return true;
 }
 
-bool AudioBuffer::read(void* data, size_t& size) {
+bool AudioBuffer::readFromBuffer(void* data, size_t& size) {
     std::unique_lock<std::mutex> lock(mMutex);
 
     // 等待条件：缓冲区非空或录音已停止
@@ -268,12 +275,12 @@ size_t AudioBuffer::getAvailableData() const {
 
 // AAudioRecorder类的实现
 AAudioRecorder::AAudioRecorder()
-    : mStream(nullptr),
+    : mInputPreset(AAUDIO_INPUT_PRESET_GENERIC),
       mSampleRate(48000),
-      mFormat(AAUDIO_FORMAT_PCM_I16),
       mChannelCount(1),
+      mFormat(AAUDIO_FORMAT_PCM_I16),
       mBufferSizeInFrames(0),
-      mInputPreset(AAUDIO_INPUT_PRESET_GENERIC),
+      mStream(nullptr),
       mAudioBuffer(1024), // will resize later
       mRecordedFile("/data/record_48k_1ch_16bit.wav"),
       mRecordingMutex() {
@@ -300,11 +307,11 @@ bool AAudioRecorder::initialize() {
     }
 
     // 配置录音流参数
-    AAudioStreamBuilder_setDirection(builder, AAUDIO_DIRECTION_INPUT);
+    AAudioStreamBuilder_setInputPreset(builder, mInputPreset);
     AAudioStreamBuilder_setSampleRate(builder, mSampleRate);
     AAudioStreamBuilder_setChannelCount(builder, mChannelCount);
     AAudioStreamBuilder_setFormat(builder, mFormat);
-    AAudioStreamBuilder_setInputPreset(builder, mInputPreset);
+    AAudioStreamBuilder_setDirection(builder, AAUDIO_DIRECTION_INPUT);
     AAudioStreamBuilder_setSharingMode(builder, AAUDIO_SHARING_MODE_SHARED);
     AAudioStreamBuilder_setPerformanceMode(builder, AAUDIO_PERFORMANCE_MODE_LOW_LATENCY);
     AAudioStreamBuilder_setBufferCapacityInFrames(builder, DEFAULT_BUFFER_DURATION_MS * mSampleRate / 1000 * 3);
@@ -329,7 +336,7 @@ bool AAudioRecorder::initialize() {
     mFormat = AAudioStream_getFormat(mStream);
     mBufferSizeInFrames = AAudioStream_getBufferSizeInFrames(mStream);
 
-    LOGI("AAudio recorder initialized with sampleRate=%d, channelCount=%d, "
+    LOGI("AAudioRecorder initialized with sampleRate=%d, channelCount=%d, "
          "format=%d, bufferSizeInFrames=%d",
          mSampleRate, mChannelCount, mFormat, mBufferSizeInFrames);
 
@@ -350,7 +357,7 @@ bool AAudioRecorder::startRecording() {
 
     // 确保已初始化
     if (!mIsInitialized && !initialize()) {
-        LOGE("Failed to initialize AAudio recorder");
+        LOGE("Failed to initialize AAudioRecorder");
         return false;
     }
 
@@ -388,10 +395,10 @@ bool AAudioRecorder::startRecording() {
 
 #ifdef CALLBACK_MODE_ENABLE
     // 回调模式下启动文件写入线程
-    mFileWriteThread = std::thread(&AAudioRecorder::fileWriteThread, this);
+    mBufferReadThread = std::thread(&AAudioRecorder::readFromBufferAndWriteToFile, this);
 #else
     // 非回调模式下启动读取线程
-    mReadThread = std::thread(&AAudioRecorder::readAudioData, this);
+    mStreamReadThread = std::thread(&AAudioRecorder::readFromStreamAndWriteToFile, this);
 #endif
 
     return true;
@@ -422,24 +429,20 @@ bool AAudioRecorder::stopRecording() {
 
     // 等待线程结束
 #ifdef CALLBACK_MODE_ENABLE
-    if (mFileWriteThread.joinable()) {
-        LOGI("Waiting for file write thread to complete");
-        mFileWriteThread.join();
-        LOGI("File write thread joined successfully");
+    if (mBufferReadThread.joinable()) {
+        mBufferReadThread.join();
+        LOGI("Buffer read thread joined successfully");
     }
 #else
-    if (mReadThread.joinable()) {
-        LOGI("Waiting for audio read thread to complete");
-        mReadThread.join();
-        LOGI("Audio read thread joined successfully");
+    if (mStreamReadThread.joinable()) {
+        mStreamReadThread.join();
+        LOGI("Stream read thread joined successfully");
     }
 #endif
 
-    // 关闭文件（会自动更新文件头）
-    LOGI("Closing recording file");
-    mWavFile.close();
-
+    mWavFile.close(); // 关闭文件（会自动更新文件头）
     LOGI("Stopped recording, file saved: %s", mRecordedFile.c_str());
+
     return true;
 }
 
@@ -479,7 +482,7 @@ AAudioRecorder::dataCallback(AAudioStream* stream, void* userData, void* audioDa
     size_t dataSize = static_cast<size_t>(numFrames) * recorder->mChannelCount * bytesPerSample;
 
     // 将数据写入缓冲区
-    recorder->mAudioBuffer.write(audioData, dataSize);
+    recorder->mAudioBuffer.writeToBuffer(audioData, dataSize);
     // LOGV("dataCallback: Processed %d frames (%zu bytes)", numFrames, dataSize);
 
     return AAUDIO_CALLBACK_RESULT_CONTINUE;
@@ -489,7 +492,7 @@ void AAudioRecorder::errorCallback(AAudioStream* stream, void* userData, aaudio_
     LOGE("AAudio stream error: %s", AAudio_convertResultToText(error));
 }
 
-void AAudioRecorder::readAudioData() {
+void AAudioRecorder::readFromStreamAndWriteToFile() {
     int32_t bytesPerSample = WavFile::getBytesPerSample(mFormat);
     std::vector<uint8_t> buffer(mBufferSizeInFrames * mChannelCount * bytesPerSample);
 
@@ -516,16 +519,16 @@ void AAudioRecorder::readAudioData() {
     }
 }
 
-void AAudioRecorder::fileWriteThread() {
+void AAudioRecorder::readFromBufferAndWriteToFile() {
     int32_t bytesPerSample = WavFile::getBytesPerSample(mFormat);
     std::vector<uint8_t> buffer(mBufferSizeInFrames * mChannelCount * bytesPerSample);
 
-    LOGI("File write thread started");
+    LOGI("readFromBufferAndWriteToFile thread started");
     // 缓冲区读取和写入的循环
     while (true) {
         // 从缓冲区读取数据并写入文件
         size_t bytesToRead = buffer.size();
-        bool readResult = mAudioBuffer.read(buffer.data(), bytesToRead);
+        bool readResult = mAudioBuffer.readFromBuffer(buffer.data(), bytesToRead);
         if (readResult && bytesToRead > 0) {
             mWavFile.writeData(buffer.data(), bytesToRead);
             // LOGV("File write thread: Wrote %zu bytes to file", bytesToRead);
@@ -539,7 +542,7 @@ void AAudioRecorder::fileWriteThread() {
     // 处理剩余数据
     while (!mAudioBuffer.isEmpty()) {
         size_t bytesToRead = buffer.size();
-        if (mAudioBuffer.read(buffer.data(), bytesToRead) && bytesToRead > 0) {
+        if (mAudioBuffer.readFromBuffer(buffer.data(), bytesToRead) && bytesToRead > 0) {
             mWavFile.writeData(buffer.data(), bytesToRead);
         }
     }
@@ -577,7 +580,6 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_example_aaudiorecorder_AudioRecor
     if (gAudioRecorder == nullptr) {
         gAudioRecorder = new AAudioRecorder();
     }
-    // 只创建实例，不自动初始化，避免软件打开时调用initialize
     return JNI_TRUE;
 }
 
@@ -588,9 +590,7 @@ Java_com_example_aaudiorecorder_AudioRecorderManager_nativeStartRecording(JNIEnv
         return JNI_FALSE;
     }
 
-    // 不传递任何文件路径参数，完全由C++层管理文件名
     bool result = gAudioRecorder->startRecording();
-
     return result ? JNI_TRUE : JNI_FALSE;
 }
 
