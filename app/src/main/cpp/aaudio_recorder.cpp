@@ -10,7 +10,6 @@
 
 // WavFile类的实现
 WavFile::WavFile() : mSampleRate(0), mChannelCount(0), mFormat(AAUDIO_FORMAT_INVALID), mDataSize(0) {}
-
 WavFile::~WavFile() { close(); }
 
 bool WavFile::open(const std::string& filePath, int32_t sampleRate, int32_t channelCount, aaudio_format_t format) {
