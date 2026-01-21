@@ -1,6 +1,6 @@
-// 全新AAudio录音器头文件
-#ifndef NEW_AAUDIO_RECORDER_H
-#define NEW_AAUDIO_RECORDER_H
+// AAudio录音器头文件
+#ifndef AAUDIO_RECORDER_H
+#define AAUDIO_RECORDER_H
 
 #include <condition_variable>
 #include <fstream>
@@ -18,15 +18,82 @@
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 #define LOGW(...) __android_log_print(ANDROID_LOG_WARN, LOG_TAG, __VA_ARGS__)
-#define LOGV(...) __android_log_print(ANDROID_LOG_VERBOSE, LOG_TAG, __VA_ARGS__)
+#define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
 
-// WAV文件管理类
-class WavFile {
+// WAV文件读取类 (从AAudioPlayer移植)
+class WaveFile {
 public:
-    WavFile();
-    ~WavFile();
+    // WAV文件头结构
+    struct WaveHeader {
+        // RIFF头
+        char riffId[4];    // "RIFF"
+        uint32_t riffSize; // 文件大小 - 8
+        char waveId[4];    // "WAVE"
 
-    // 以指定参数打开WAV文件
+        // fmt子块
+        char fmtId[4];          // "fmt "
+        uint16_t audioFormat;   // 音频格式 (1 = PCM)
+        uint16_t numChannels;   // 声道数
+        uint32_t sampleRate;    // 采样率
+        uint32_t byteRate;      // 字节率
+        uint16_t blockAlign;    // 块对齐
+        uint16_t bitsPerSample; // 每样本位数
+
+        // data子块
+        char dataId[4];    // "data"
+        uint32_t dataSize; // 音频数据大小
+    };
+
+    WaveFile();
+    ~WaveFile();
+
+    // 打开WAV文件进行读取
+    bool open(const std::string& filePath);
+    
+    // 关闭文件
+    void close();
+    
+    // 读取音频数据
+    size_t readAudioData(void* buffer, size_t bufferSize);
+    
+    // 检查文件是否打开
+    bool isOpen() const;
+    
+    // 获取AAudio格式
+    int32_t getAAudioFormat() const;
+    
+    // 获取格式信息字符串
+    std::string getFormatInfo() const;
+    
+    // 获取采样率
+    uint32_t getSampleRate() const { return header_.sampleRate; }
+    
+    // 获取声道数
+    uint16_t getChannelCount() const { return header_.numChannels; }
+    
+    // 获取位深度
+    uint16_t getBitsPerSample() const { return header_.bitsPerSample; }
+
+private:
+    std::ifstream file_;
+    bool isOpen_;
+    WaveHeader header_;
+
+    bool readHeader();
+    bool validateRiffHeader();
+    bool readFmtChunk();
+    bool findDataChunk();
+    void skipChunk(uint32_t chunkSize);
+    bool isValidFormat() const;
+};
+
+// WAV文件写入类 (录音用)
+class WavFileWriter {
+public:
+    WavFileWriter();
+    ~WavFileWriter();
+
+    // 以指定参数打开WAV文件进行写入
     bool open(const std::string& filePath, int32_t sampleRate, int32_t channelCount, aaudio_format_t format);
 
     // 关闭WAV文件
@@ -36,13 +103,13 @@ public:
     bool writeData(const void* data, size_t size);
 
     // 获取文件是否打开
-    [[maybe_unused]] bool isOpen() const;
+    bool isOpen() const;
 
     // 获取文件路径
-    [[maybe_unused]] const std::string& getFilePath() const;
+    const std::string& getFilePath() const;
 
     // 获取数据大小
-    [[maybe_unused]] uint32_t getDataSize() const;
+    uint32_t getDataSize() const;
 
     // 获取每个采样的字节数
     static int32_t getBytesPerSample(aaudio_format_t format);
@@ -76,110 +143,4 @@ private:
     void writeHeader(uint32_t dataSize);
 };
 
-class AudioBuffer {
-public:
-    explicit AudioBuffer(size_t bufferSize);
-    ~AudioBuffer() = default;
-
-    bool writeToBuffer(const void* data, size_t size);
-    // 读取数据 - size参数通过引用返回实际读取的字节数
-    bool readFromBuffer(void* data, size_t& size);
-
-    bool isEmpty() const;
-    void notifyAll();
-
-    // 设置所有者指针
-    void setOwner(void* owner) { mOwner = owner; }
-
-    // 调整缓冲区大小
-    void reSize(size_t newSize);
-
-private:
-    std::vector<uint8_t> mBuffer;
-    size_t mReadIndex = 0;  // 初始化为0
-    size_t mWriteIndex = 0; // 初始化为0
-    bool mIsFull = false;   // 初始化为false
-    mutable std::mutex mMutex;
-    std::condition_variable mNotEmpty;
-
-    size_t getAvailableSpace() const;
-    size_t getAvailableData() const;
-
-    // 指向AAudioRecorder的指针，用于检查录音状态
-    void* mOwner = nullptr;
-};
-
-// AAudio录音器主类
-class AAudioRecorder {
-public:
-    AAudioRecorder();
-    ~AAudioRecorder();
-
-    bool initialize();
-    bool startRecording();
-
-    // 获取当前录音文件路径
-    [[maybe_unused]] const std::string& getRecordedFilePath() const { return mRecordedFile; }
-
-    // 设置录音文件路径
-    [[maybe_unused]] void setRecordedFilePath(const std::string& filePath) { mRecordedFile = filePath; }
-    bool stopRecording();
-    void release();
-
-    // 判断是否正在录音，供AudioBuffer使用
-    bool isRecording() const {
-        std::lock_guard<std::mutex> lock(mRecordingMutex);
-        return mIsRecording;
-    }
-
-private:
-    // AAudio相关
-    bool mIsInitialized = false; // 初始化为false
-    bool mIsRecording = false;   // 初始化为false
-
-    aaudio_input_preset_t mInputPreset;
-    int32_t mSampleRate;
-    int32_t mChannelCount;
-    aaudio_format_t mFormat;
-    int32_t mBufferSizeInFrames;
-    AAudioStream* mStream;
-    AudioBuffer mAudioBuffer;
-    std::string mRecordedFile; // 录音文件路径
-    mutable std::mutex mRecordingMutex;
-    WavFile mWavFile; // 录音文件管理对象
-
-    // 线程相关
-    std::thread mStreamReadThread; // 非回调模式：从音频流读取数据的线程
-    std::thread mBufferReadThread; // 回调模式：从缓冲区读取数据并写入文件的线程
-
-    // 回调模式的数据回调函数
-    static aaudio_data_callback_result_t
-    dataCallback([[maybe_unused]] AAudioStream* stream, void* userData, void* audioData, int32_t numFrames);
-
-    // 错误回调函数
-    static void errorCallback(AAudioStream* stream, void* userData, aaudio_result_t error);
-
-    // 非回调模式的音频读取线程
-    void readFromStreamAndWriteToFile();
-
-    // 回调模式的文件写入线程
-    void readFromBufferAndWriteToFile();
-
-    // 生成自动文件名
-    std::string generateAutoFileName() const;
-};
-
-// JNI方法声明
-extern "C" JNIEXPORT jboolean JNICALL Java_com_example_aaudiorecorder_AudioRecorderManager_nativeInit(JNIEnv* env,
-                                                                                                      jobject thiz);
-
-extern "C" JNIEXPORT jboolean JNICALL
-Java_com_example_aaudiorecorder_AudioRecorderManager_nativeStartRecording(JNIEnv* env, jobject thiz);
-
-extern "C" JNIEXPORT jboolean JNICALL
-Java_com_example_aaudiorecorder_AudioRecorderManager_nativeStopRecording(JNIEnv* env, jobject thiz);
-
-extern "C" JNIEXPORT void JNICALL Java_com_example_aaudiorecorder_AudioRecorderManager_nativeRelease(JNIEnv* env,
-                                                                                                     jobject thiz);
-
-#endif // NEW_AAUDIO_RECORDER_H
+#endif // AAUDIO_RECORDER_H
