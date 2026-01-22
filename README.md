@@ -83,14 +83,14 @@ AAudio Recorder是一个专为Android平台设计的音频录制测试工具，�
 
 应用支持以下录音使用场景：
 
-| 配置名称  | Input Preset        | 采样率   | 声道  | 格式  | Performance Mode | Sharing Mode | 说明      |
-|-------|---------------------|-------|-----|-----|------------------|--------------|---------|
-| 标准录音  | GENERIC             | 48kHz | 单声道 | 16位 | LOW_LATENCY      | SHARED       | 通用录音场景  |
-| 语音通话  | VOICE_COMMUNICATION | 16kHz | 单声道 | 16位 | LOW_LATENCY      | SHARED       | 语音通话录制  |
-| 语音识别  | VOICE_RECOGNITION   | 16kHz | 单声道 | 16位 | LOW_LATENCY      | SHARED       | 语音识别优化  |
-| 摄像录音  | CAMCORDER           | 48kHz | 立体声 | 16位 | POWER_SAVING     | SHARED       | 视频录制音频  |
-| 高性能语音 | VOICE_PERFORMANCE   | 48kHz | 单声道 | 16位 | LOW_LATENCY      | EXCLUSIVE    | 专业语音录制  |
-| 原始录音  | UNPROCESSED         | 48kHz | 立体声 | 16位 | LOW_LATENCY      | EXCLUSIVE    | 无处理原始音频 |
+| 配置名称  | Input Preset                            | 采样率   | 声道  | 格式                    | Performance Mode                     | Sharing Mode                  | 说明      |
+|-------|-----------------------------------------|-------|-----|-----------------------|--------------------------------------|-------------------------------|---------|
+| 标准录音  | AAUDIO_INPUT_PRESET_GENERIC             | 48kHz | 单声道 | AAUDIO_FORMAT_PCM_I16 | AAUDIO_PERFORMANCE_MODE_LOW_LATENCY  | AAUDIO_SHARING_MODE_SHARED    | 通用录音场景  |
+| 语音通话  | AAUDIO_INPUT_PRESET_VOICE_COMMUNICATION | 16kHz | 单声道 | AAUDIO_FORMAT_PCM_I16 | AAUDIO_PERFORMANCE_MODE_LOW_LATENCY  | AAUDIO_SHARING_MODE_SHARED    | 语音通话录制  |
+| 语音识别  | AAUDIO_INPUT_PRESET_VOICE_RECOGNITION   | 16kHz | 单声道 | AAUDIO_FORMAT_PCM_I16 | AAUDIO_PERFORMANCE_MODE_LOW_LATENCY  | AAUDIO_SHARING_MODE_SHARED    | 语音识别优化  |
+| 摄像录音  | AAUDIO_INPUT_PRESET_CAMCORDER           | 48kHz | 立体声 | AAUDIO_FORMAT_PCM_I16 | AAUDIO_PERFORMANCE_MODE_POWER_SAVING | AAUDIO_SHARING_MODE_SHARED    | 视频录制音频  |
+| 高性能语音 | AAUDIO_INPUT_PRESET_VOICE_PERFORMANCE   | 48kHz | 单声道 | AAUDIO_FORMAT_PCM_I16 | AAUDIO_PERFORMANCE_MODE_LOW_LATENCY  | AAUDIO_SHARING_MODE_EXCLUSIVE | 专业语音录制  |
+| 原始录音  | AAUDIO_INPUT_PRESET_UNPROCESSED         | 48kHz | 立体声 | AAUDIO_FORMAT_PCM_I16 | AAUDIO_PERFORMANCE_MODE_LOW_LATENCY  | AAUDIO_SHARING_MODE_EXCLUSIVE | 无处理原始音频 |
 
 ## 🔧 配置文件
 
@@ -105,14 +105,14 @@ AAudio Recorder是一个专为Android平台设计的音频录制测试工具，�
 {
   "configs": [
     {
-      "inputPreset": "GENERIC",
+      "inputPreset": "AAUDIO_INPUT_PRESET_GENERIC",
       "sampleRate": 48000,
       "channelCount": 1,
-      "format": "PCM_16",
-      "performanceMode": "LOW_LATENCY",
-      "sharingMode": "SHARED",
-      "outputPath": "/data/",
-      "description": "标准录音配置"
+      "format": "AAUDIO_FORMAT_PCM_I16",
+      "performanceMode": "AAUDIO_PERFORMANCE_MODE_LOW_LATENCY",
+      "sharingMode": "AAUDIO_SHARING_MODE_SHARED",
+      "outputPath": "/data/recorded_48k_1ch_16bit.wav",
+      "description": "标准录音 - 48kHz单声道"
     }
   ]
 }
@@ -121,11 +121,25 @@ AAudio Recorder是一个专为Android平台设计的音频录制测试工具，�
 ### 配置参数说明
 
 - **inputPreset**: 录音输入预设
+  - `AAUDIO_INPUT_PRESET_GENERIC` - 通用录音
+  - `AAUDIO_INPUT_PRESET_VOICE_COMMUNICATION` - 语音通话
+  - `AAUDIO_INPUT_PRESET_VOICE_RECOGNITION` - 语音识别
+  - `AAUDIO_INPUT_PRESET_CAMCORDER` - 摄像录音
+  - `AAUDIO_INPUT_PRESET_VOICE_PERFORMANCE` - 高性能语音
+  - `AAUDIO_INPUT_PRESET_UNPROCESSED` - 原始录音
 - **sampleRate**: 采样率 (Hz)
 - **channelCount**: 声道数 (1=单声道, 2=立体声)
-- **format**: 音频格式 (PCM_16/PCM_24/PCM_32/PCM_FLOAT)
-- **performanceMode**: 性能模式 (LOW_LATENCY/POWER_SAVING)
-- **sharingMode**: 共享模式 (SHARED/EXCLUSIVE)
+- **format**: 音频格式
+  - `AAUDIO_FORMAT_PCM_I16` - 16位PCM
+  - `AAUDIO_FORMAT_PCM_I24_PACKED` - 24位PCM
+  - `AAUDIO_FORMAT_PCM_I32` - 32位PCM
+  - `AAUDIO_FORMAT_PCM_FLOAT` - 浮点PCM
+- **performanceMode**: 性能模式
+  - `AAUDIO_PERFORMANCE_MODE_LOW_LATENCY` - 低延迟
+  - `AAUDIO_PERFORMANCE_MODE_POWER_SAVING` - 省电模式
+- **sharingMode**: 共享模式
+  - `AAUDIO_SHARING_MODE_SHARED` - 共享模式
+  - `AAUDIO_SHARING_MODE_EXCLUSIVE` - 独占模式
 - **outputPath**: 输出文件路径
 - **description**: 配置描述
 
