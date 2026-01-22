@@ -8,7 +8,6 @@ project("aaudiorecorder")
 # and provides the relative paths to its source code.
 add_library(${CMAKE_PROJECT_NAME} SHARED
         aaudio_recorder.cpp
-        WaveFile.cpp
         )
 
 # Specifies libraries CMake should link to your target library.

@@ -4,6 +4,10 @@ plugins {
 
 android {
     namespace = "com.example.aaudiorecorder"
+    compileSdk = 36
+    buildToolsVersion = "36.1.0"
+    ndkVersion = "29.0.14206865"
+    compileSdkMinor = 1
 
     defaultConfig {
         applicationId = "com.example.aaudiorecorder"
@@ -20,13 +24,6 @@ android {
             path = file("src/main/cpp/CMakeLists.txt")
         }
     }
-    buildFeatures {
-        viewBinding = true
-    }
-    compileSdk = 36
-    buildToolsVersion = "36.1.0"
-    ndkVersion = "29.0.14206865"
-    compileSdkMinor = 1
 }
 
 dependencies {

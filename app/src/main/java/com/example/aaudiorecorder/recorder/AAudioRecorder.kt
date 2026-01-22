@@ -1,13 +1,12 @@
 package com.example.aaudiorecorder.recorder
 
-import android.content.Context
 import android.util.Log
 import com.example.aaudiorecorder.config.RecorderConfig
 
 /**
  * AAudio录音器 - 参考AAudioPlayer的架构设计
  */
-class AAudioRecorder(context: Context) {
+class AAudioRecorder {
     companion object {
         private const val TAG = "AAudioRecorder"
         
@@ -53,12 +52,9 @@ class AAudioRecorder(context: Context) {
         
         currentConfig = config
         Log.d(TAG, "Config updated: ${config.description}")
+        Log.d(TAG, "Using output path: ${config.outputPath}")
         
-        // 获取实际的输出文件路径
-        val actualOutputPath = config.getActualOutputPath()
-        Log.d(TAG, "Using output path: $actualOutputPath")
-        
-        // 应用配置到native层
+        // 应用配置到native层，直接传递原始的outputPath
         setNativeConfig(
             config.getInputPresetValue(),
             config.sampleRate,
@@ -66,7 +62,7 @@ class AAudioRecorder(context: Context) {
             config.getFormatValue(),
             config.getPerformanceModeValue(),
             config.getSharingModeValue(),
-            actualOutputPath
+            config.outputPath  // 直接使用原始路径，让C++代码处理文件名生成
         )
     }
 
@@ -132,7 +128,14 @@ class AAudioRecorder(context: Context) {
      */
     fun getLastRecordingInfo(): String {
         return if (isRecording) {
-            "录音中 - ${currentConfig.sampleRate}Hz, ${currentConfig.channelCount}声道, ${currentConfig.format}位"
+            val formatDisplay = when (currentConfig.format) {
+                "AAUDIO_FORMAT_PCM_I16" -> "16位"
+                "AAUDIO_FORMAT_PCM_I24_PACKED" -> "24位"
+                "AAUDIO_FORMAT_PCM_I32" -> "32位"
+                "AAUDIO_FORMAT_PCM_FLOAT" -> "32位浮点"
+                else -> currentConfig.format
+            }
+            "录音中 - ${currentConfig.sampleRate}Hz, ${currentConfig.channelCount}声道, $formatDisplay"
         } else {
             val filePath = getLastRecordingPath()
             val fileSize = getLastRecordingSize()

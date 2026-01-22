@@ -4,7 +4,6 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.app.AlertDialog
 import android.content.pm.PackageManager
-import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.widget.Button
@@ -17,7 +16,7 @@ import com.example.aaudiorecorder.config.RecorderConfig
 import com.example.aaudiorecorder.recorder.AAudioRecorder
 
 /**
- * AAudio录音器主界面 - 参考AAudioPlayer的架构设计
+ * AAudio录音器主界面
  * 
  * 使用说明:
  * 1. 确保设备支持AAudio API (Android 8.1+)
@@ -70,7 +69,7 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun initializeAudioRecorder() {
-        audioRecorder = AAudioRecorder(this)
+        audioRecorder = AAudioRecorder()
         audioRecorder.setRecordingListener(object : AAudioRecorder.RecordingListener {
             override fun onRecordingStarted() {
                 runOnUiThread {
@@ -111,8 +110,13 @@ class MainActivity : AppCompatActivity() {
             currentConfig = availableConfigs[0]
             audioRecorder.setConfig(currentConfig!!)
             updateRecordingInfo()
+            Log.i(TAG, "Loaded ${availableConfigs.size} recording configurations")
+        } else {
+            Log.e(TAG, "Failed to load recording configurations")
+            statusText.text = "配置加载失败"
+            recordButton.isEnabled = false
+            configButton.isEnabled = false
         }
-        Log.i(TAG, "Loaded ${availableConfigs.size} recording configurations")
     }
     
     private fun checkPermissions() {
@@ -124,22 +128,8 @@ class MainActivity : AppCompatActivity() {
             permissions.add(Manifest.permission.RECORD_AUDIO)
         }
         
-        // 存储权限
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            // Android 13+ 使用 READ_MEDIA_AUDIO
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_AUDIO) 
-                != PackageManager.PERMISSION_GRANTED) {
-                permissions.add(Manifest.permission.READ_MEDIA_AUDIO)
-            }
-        } else {
-            // Android 12 及以下使用 READ_EXTERNAL_STORAGE
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) 
-                != PackageManager.PERMISSION_GRANTED) {
-                permissions.add(Manifest.permission.READ_EXTERNAL_STORAGE)
-            }
-        }
-        
-        // 写入存储权限 (Android 10 以下)
+        // 存储权限 - 由于最低 SDK 版本是 32 (Android 12L)，使用 Scoped Storage，不需要额外的存储权限
+        // 应用可以直接写入应用专用目录或使用 /data 目录
         if (permissions.isNotEmpty()) {
             ActivityCompat.requestPermissions(this, permissions.toTypedArray(), PERMISSION_REQUEST_CODE)
         } else {
@@ -172,12 +162,22 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun startRecording() {
+        if (audioRecorder.isRecording()) {
+            Toast.makeText(this, "已在录音中", Toast.LENGTH_SHORT).show()
+            return
+        }
+        
         if (audioRecorder.startRecording()) {
             Log.i(TAG, "Recording started")
         }
     }
     
     private fun stopRecording() {
+        if (!audioRecorder.isRecording()) {
+            Toast.makeText(this, "当前未在录音", Toast.LENGTH_SHORT).show()
+            return
+        }
+        
         if (audioRecorder.stopRecording()) {
             Log.i(TAG, "Recording stopped")
         }
