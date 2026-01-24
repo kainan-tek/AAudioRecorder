@@ -1,7 +1,7 @@
 package com.example.aaudiorecorder.recorder
 
 import android.util.Log
-import com.example.aaudiorecorder.config.RecorderConfig
+import com.example.aaudiorecorder.config.AAudioConfig
 
 /**
  * AAudio录音器 - 参考AAudioPlayer的架构设计
@@ -26,7 +26,7 @@ class AAudioRecorder {
         fun onRecordingError(error: String)
     }
     
-    private var currentConfig: RecorderConfig = RecorderConfig()
+    private var currentConfig: AAudioConfig = AAudioConfig()
     private var listener: RecordingListener? = null
     private var isRecording = false
     
@@ -44,7 +44,7 @@ class AAudioRecorder {
     /**
      * 设置录音配置
      */
-    fun setConfig(config: RecorderConfig) {
+    fun setConfig(config: AAudioConfig) {
         if (isRecording) {
             Log.w(TAG, "Cannot change config while recording")
             return
@@ -79,11 +79,7 @@ class AAudioRecorder {
         Log.d(TAG, "Starting recording with config: ${currentConfig.description}")
         
         val success = startNativeRecording()
-        if (success) {
-            isRecording = true
-            listener?.onRecordingStarted()
-            Log.i(TAG, "Recording started successfully")
-        } else {
+        if (!success) {
             listener?.onRecordingError("启动录音失败")
             Log.e(TAG, "Failed to start recording")
         }
@@ -104,11 +100,7 @@ class AAudioRecorder {
         Log.d(TAG, "Stopping recording")
         
         val success = stopNativeRecording()
-        if (success) {
-            isRecording = false
-            listener?.onRecordingStopped()
-            Log.i(TAG, "Recording stopped successfully")
-        } else {
+        if (!success) {
             listener?.onRecordingError("停止录音失败")
             Log.e(TAG, "Failed to stop recording")
         }
@@ -124,30 +116,6 @@ class AAudioRecorder {
     }
     
     /**
-     * 获取最后录音文件信息
-     */
-    fun getLastRecordingInfo(): String {
-        return if (isRecording) {
-            val formatDisplay = when (currentConfig.format) {
-                "AAUDIO_FORMAT_PCM_I16" -> "16位"
-                "AAUDIO_FORMAT_PCM_I24_PACKED" -> "24位"
-                "AAUDIO_FORMAT_PCM_I32" -> "32位"
-                "AAUDIO_FORMAT_PCM_FLOAT" -> "32位浮点"
-                else -> currentConfig.format
-            }
-            "录音中 - ${currentConfig.sampleRate}Hz, ${currentConfig.channelCount}声道, $formatDisplay"
-        } else {
-            val filePath = getLastRecordingPath()
-            val fileSize = getLastRecordingSize()
-            if (filePath.isNotEmpty()) {
-                "最后录音: $filePath (${formatFileSize(fileSize)})"
-            } else {
-                "暂无录音文件"
-            }
-        }
-    }
-    
-    /**
      * 释放资源
      */
     fun release() {
@@ -156,17 +124,6 @@ class AAudioRecorder {
         }
         releaseNative()
         Log.d(TAG, "Resources released")
-    }
-    
-    /**
-     * 格式化文件大小
-     */
-    private fun formatFileSize(bytes: Long): String {
-        return when {
-            bytes < 1024 -> "${bytes}B"
-            bytes < 1024 * 1024 -> "${bytes / 1024}KB"
-            else -> "${bytes / (1024 * 1024)}MB"
-        }
     }
     
     // Native方法声明
@@ -182,8 +139,6 @@ class AAudioRecorder {
     ): Boolean
     private external fun startNativeRecording(): Boolean
     private external fun stopNativeRecording(): Boolean
-    private external fun getLastRecordingPath(): String
-    private external fun getLastRecordingSize(): Long
     private external fun releaseNative()
     
     // 从Native层调用的回调方法
@@ -191,17 +146,20 @@ class AAudioRecorder {
     private fun onNativeRecordingStarted() {
         isRecording = true
         listener?.onRecordingStarted()
+        Log.i(TAG, "Recording started successfully")
     }
     
     @Suppress("unused")
     private fun onNativeRecordingStopped() {
         isRecording = false
         listener?.onRecordingStopped()
+        Log.i(TAG, "Recording stopped successfully")
     }
     
     @Suppress("unused")
     private fun onNativeRecordingError(error: String) {
         isRecording = false
         listener?.onRecordingError(error)
+        Log.e(TAG, "Recording error: $error")
     }
 }

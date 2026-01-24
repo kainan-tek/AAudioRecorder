@@ -29,10 +29,6 @@ struct AudioRecorderState {
     aaudio_performance_mode_t performanceMode = AAUDIO_PERFORMANCE_MODE_LOW_LATENCY;
     aaudio_sharing_mode_t sharingMode = AAUDIO_SHARING_MODE_SHARED;
     std::string outputPath = "/data/";
-
-    // 最后录音文件信息
-    std::string lastRecordingPath;
-    int64_t lastRecordingSize = 0;
 };
 
 static AudioRecorderState g_recorder;
@@ -173,8 +169,8 @@ static void errorCallback(AAudioStream* stream, void* userData, aaudio_result_t 
     notifyRecordingError(errorMsg);
 }
 
-// 创建录音流
-static bool createRecordingStream() {
+// 创建AAudio流
+static bool createAAudioStream() {
     AAudioStreamBuilder* builder = nullptr;
     aaudio_result_t result = AAudio_createStreamBuilder(&builder);
 
@@ -304,8 +300,8 @@ JNIEXPORT jboolean JNICALL Java_com_example_aaudiorecorder_recorder_AAudioRecord
 
     LOGI("Starting recording");
 
-    // 创建录音流
-    if (!createRecordingStream()) {
+    // 创建AAudio流
+    if (!createAAudioStream()) {
         notifyRecordingError("创建录音流失败");
         return JNI_FALSE;
     }
@@ -331,7 +327,6 @@ JNIEXPORT jboolean JNICALL Java_com_example_aaudiorecorder_recorder_AAudioRecord
     }
 
     g_recorder.isRecording.store(true);
-    g_recorder.lastRecordingPath = filePath;
 
     LOGI("Recording started successfully: %s", filePath.c_str());
     notifyRecordingStarted();
@@ -370,27 +365,15 @@ JNIEXPORT jboolean JNICALL Java_com_example_aaudiorecorder_recorder_AAudioRecord
 
     // 关闭WAV文件
     if (g_recorder.wavWriter) {
-        g_recorder.lastRecordingSize = static_cast<int64_t>(g_recorder.wavWriter->getDataSize());
         g_recorder.wavWriter->close();
         g_recorder.wavWriter.reset();
     }
 
-    LOGI("Recording stopped successfully. File: %s, Size: %lld bytes", g_recorder.lastRecordingPath.c_str(),
-         static_cast<long long>(g_recorder.lastRecordingSize));
+    LOGI("Recording stopped successfully");
 
     notifyRecordingStopped();
 
     return JNI_TRUE;
-}
-
-JNIEXPORT jstring JNICALL Java_com_example_aaudiorecorder_recorder_AAudioRecorder_getLastRecordingPath(JNIEnv* env,
-                                                                                                       jobject thiz) {
-    return env->NewStringUTF(g_recorder.lastRecordingPath.c_str());
-}
-
-JNIEXPORT jlong JNICALL Java_com_example_aaudiorecorder_recorder_AAudioRecorder_getLastRecordingSize(JNIEnv* env,
-                                                                                                     jobject thiz) {
-    return g_recorder.lastRecordingSize;
 }
 
 JNIEXPORT void JNICALL Java_com_example_aaudiorecorder_recorder_AAudioRecorder_releaseNative(JNIEnv* env,
@@ -473,8 +456,6 @@ bool WavFileWriter::writeData(const void* data, size_t size) {
 }
 
 bool WavFileWriter::isOpen() const { return mFileStream.is_open(); }
-
-uint32_t WavFileWriter::getDataSize() const { return mDataSize; }
 
 int32_t WavFileWriter::getBytesPerSample(aaudio_format_t format) {
     switch (format) {

@@ -8,7 +8,7 @@ import java.io.File
 /**
  * AAudio录音配置数据类 - 参考AAudioPlayer的配置管理
  */
-data class RecorderConfig(
+data class AAudioConfig(
     val inputPreset: String = "AAUDIO_INPUT_PRESET_GENERIC",
     val sampleRate: Int = 48000,
     val channelCount: Int = 1,
@@ -19,11 +19,11 @@ data class RecorderConfig(
     val description: String = "默认录音配置"
 ) {
     companion object {
-        private const val TAG = "RecorderConfig"
+        private const val TAG = "AAudioConfig"
         private const val CONFIG_FILE_PATH = "/data/aaudio_recorder_configs.json"
         private const val ASSETS_CONFIG_FILE = "aaudio_recorder_configs.json"
         
-        fun loadConfigs(context: Context): List<RecorderConfig> {
+        fun loadConfigs(context: Context): List<AAudioConfig> {
             val externalFile = File(CONFIG_FILE_PATH)
             return try {
                 val jsonString = if (externalFile.exists()) {
@@ -40,11 +40,11 @@ data class RecorderConfig(
             }
         }
         
-        private fun parseConfigs(jsonString: String): List<RecorderConfig> {
+        private fun parseConfigs(jsonString: String): List<AAudioConfig> {
             val configsArray = JSONObject(jsonString).getJSONArray("configs")
             return (0 until configsArray.length()).map { i ->
                 val config = configsArray.getJSONObject(i)
-                RecorderConfig(
+                AAudioConfig(
                     inputPreset = config.optString("inputPreset", "AAUDIO_INPUT_PRESET_GENERIC"),
                     sampleRate = config.optInt("sampleRate", 48000),
                     channelCount = config.optInt("channelCount", 1),
@@ -57,9 +57,9 @@ data class RecorderConfig(
             }
         }
         
-        private fun getDefaultConfigs(): List<RecorderConfig> {
+        private fun getDefaultConfigs(): List<AAudioConfig> {
             return listOf(
-                RecorderConfig(
+                AAudioConfig(
                     inputPreset = "AAUDIO_INPUT_PRESET_GENERIC",
                     sampleRate = 48000,
                     channelCount = 1,
@@ -69,7 +69,7 @@ data class RecorderConfig(
                     outputPath = "/data/standard_recording.wav",
                     description = "标准录音 - 48kHz单声道"
                 ),
-                RecorderConfig(
+                AAudioConfig(
                     inputPreset = "AAUDIO_INPUT_PRESET_VOICE_COMMUNICATION",
                     sampleRate = 16000,
                     channelCount = 1,
@@ -79,7 +79,7 @@ data class RecorderConfig(
                     outputPath = "",
                     description = "语音通话 - 16kHz单声道"
                 ),
-                RecorderConfig(
+                AAudioConfig(
                     inputPreset = "AAUDIO_INPUT_PRESET_VOICE_RECOGNITION",
                     sampleRate = 16000,
                     channelCount = 1,
@@ -89,7 +89,7 @@ data class RecorderConfig(
                     outputPath = "/data/voice_recognition.wav",
                     description = "语音识别 - 16kHz单声道"
                 ),
-                RecorderConfig(
+                AAudioConfig(
                     inputPreset = "AAUDIO_INPUT_PRESET_CAMCORDER",
                     sampleRate = 44100,
                     channelCount = 2,
@@ -99,7 +99,7 @@ data class RecorderConfig(
                     outputPath = "",
                     description = "摄像录音 - 44.1kHz立体声"
                 ),
-                RecorderConfig(
+                AAudioConfig(
                     inputPreset = "AAUDIO_INPUT_PRESET_VOICE_PERFORMANCE",
                     sampleRate = 48000,
                     channelCount = 1,
@@ -109,7 +109,7 @@ data class RecorderConfig(
                     outputPath = "",
                     description = "高性能语音 - 48kHz独占模式"
                 ),
-                RecorderConfig(
+                AAudioConfig(
                     inputPreset = "AAUDIO_INPUT_PRESET_UNPROCESSED",
                     sampleRate = 48000,
                     channelCount = 2,
@@ -119,7 +119,7 @@ data class RecorderConfig(
                     outputPath = "/data/raw_stereo_48k.wav",
                     description = "原始录音 - 48kHz立体声无处理"
                 ),
-                RecorderConfig(
+                AAudioConfig(
                     inputPreset = "AAUDIO_INPUT_PRESET_GENERIC",
                     sampleRate = 44100,
                     channelCount = 2,
@@ -129,7 +129,7 @@ data class RecorderConfig(
                     outputPath = "",
                     description = "音乐录音 - 44.1kHz立体声"
                 ),
-                RecorderConfig(
+                AAudioConfig(
                     inputPreset = "AAUDIO_INPUT_PRESET_GENERIC",
                     sampleRate = 96000,
                     channelCount = 2,

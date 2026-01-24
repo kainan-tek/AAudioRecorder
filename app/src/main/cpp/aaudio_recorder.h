@@ -20,7 +20,82 @@
 #define LOGW(...) __android_log_print(ANDROID_LOG_WARN, LOG_TAG, __VA_ARGS__)
 // #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
 
-// WAV文件写入类 (录音用)
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/**
+ * AAudio Recorder JNI Interface
+ *
+ * This header defines the JNI interface for the AAudio recorder functionality.
+ * It provides functions to initialize, control, and manage audio recording
+ * using Android's AAudio API with WAV file support.
+ */
+
+/**
+ * Initialize the audio recorder
+ * @param env JNI environment
+ * @param thiz Java object instance
+ * @return JNI_TRUE if initialization successful, JNI_FALSE otherwise
+ */
+JNIEXPORT jboolean JNICALL Java_com_example_aaudiorecorder_recorder_AAudioRecorder_initializeNative(JNIEnv* env,
+                                                                                                    jobject thiz);
+
+/**
+ * Set native audio recording configuration
+ * @param env JNI environment
+ * @param thiz Java object instance
+ * @param inputPreset Audio input preset
+ * @param sampleRate Sample rate
+ * @param channelCount Channel count
+ * @param format Audio format
+ * @param performanceMode Performance mode
+ * @param sharingMode Sharing mode
+ * @param outputPath Output file path
+ * @return JNI_TRUE if configuration set successfully, JNI_FALSE otherwise
+ */
+JNIEXPORT jboolean JNICALL Java_com_example_aaudiorecorder_recorder_AAudioRecorder_setNativeConfig(JNIEnv* env,
+                                                                                                   jobject thiz,
+                                                                                                   jint inputPreset,
+                                                                                                   jint sampleRate,
+                                                                                                   jint channelCount,
+                                                                                                   jint format,
+                                                                                                   jint performanceMode,
+                                                                                                   jint sharingMode,
+                                                                                                   jstring outputPath);
+
+/**
+ * Start audio recording
+ * @param env JNI environment
+ * @param thiz Java object instance
+ * @return JNI_TRUE if recording started successfully, JNI_FALSE otherwise
+ */
+JNIEXPORT jboolean JNICALL Java_com_example_aaudiorecorder_recorder_AAudioRecorder_startNativeRecording(JNIEnv* env,
+                                                                                                        jobject thiz);
+
+/**
+ * Stop audio recording
+ * @param env JNI environment
+ * @param thiz Java object instance
+ * @return JNI_TRUE if recording stopped successfully, JNI_FALSE otherwise
+ */
+JNIEXPORT jboolean JNICALL Java_com_example_aaudiorecorder_recorder_AAudioRecorder_stopNativeRecording(JNIEnv* env,
+                                                                                                       jobject thiz);
+
+/**
+ * Release audio recorder resources
+ * @param env JNI environment
+ * @param thiz Java object instance
+ */
+JNIEXPORT void JNICALL Java_com_example_aaudiorecorder_recorder_AAudioRecorder_releaseNative(JNIEnv* env, jobject thiz);
+
+#ifdef __cplusplus
+}
+
+/**
+ * WAV文件写入类 (录音用)
+ * 支持WAV文件的写入和音频数据保存
+ */
 class WavFileWriter {
 public:
     WavFileWriter();
@@ -37,9 +112,6 @@ public:
 
     // 获取文件是否打开
     bool isOpen() const;
-
-    // 获取数据大小
-    uint32_t getDataSize() const;
 
     // 获取每个采样的字节数
     static int32_t getBytesPerSample(aaudio_format_t format);
@@ -72,5 +144,7 @@ private:
     // 写入WAV文件头
     void writeHeader(uint32_t dataSize);
 };
+
+#endif
 
 #endif // AAUDIO_RECORDER_H

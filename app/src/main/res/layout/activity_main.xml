@@ -31,7 +31,8 @@
             android:layout_marginEnd="8dp"
             android:text="开始录音"
             android:textSize="18sp"
-            android:backgroundTint="#4CAF50" />
+            android:backgroundTint="#4CAF50"
+            style="?attr/materialButtonStyle" />
 
         <Button
             android:id="@+id/stopButton"
@@ -42,7 +43,8 @@
             android:text="停止录音"
             android:textSize="18sp"
             android:backgroundTint="#F44336"
-            android:enabled="false" />
+            android:enabled="false"
+            style="?attr/materialButtonStyle" />
 
     </LinearLayout>
 
@@ -51,7 +53,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="录音配置"
-        android:layout_marginBottom="16dp" />
+        android:layout_marginBottom="16dp"
+        style="?attr/materialButtonStyle" />
 
     <TextView
         android:id="@+id/recordingInfoTextView"

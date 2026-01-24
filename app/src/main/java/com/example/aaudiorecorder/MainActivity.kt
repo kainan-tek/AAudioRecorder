@@ -12,7 +12,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import com.example.aaudiorecorder.config.RecorderConfig
+import com.example.aaudiorecorder.config.AAudioConfig
 import com.example.aaudiorecorder.recorder.AAudioRecorder
 
 /**
@@ -33,8 +33,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var statusText: TextView
     private lateinit var recordingInfoText: TextView
     
-    private var availableConfigs: List<RecorderConfig> = emptyList()
-    private var currentConfig: RecorderConfig? = null
+    private var availableConfigs: List<AAudioConfig> = emptyList()
+    private var currentConfig: AAudioConfig? = null
 
     companion object {
         private const val TAG = "MainActivity"
@@ -47,7 +47,7 @@ class MainActivity : AppCompatActivity() {
         
         initializeViews()
         initializeAudioRecorder()
-        loadConfigs()
+        loadConfigurations()
         checkPermissions()
     }
     
@@ -104,8 +104,14 @@ class MainActivity : AppCompatActivity() {
         })
     }
     
-    private fun loadConfigs() {
-        availableConfigs = RecorderConfig.loadConfigs(this)
+    private fun loadConfigurations() {
+        availableConfigs = try {
+            AAudioConfig.loadConfigs(this)
+        } catch (e: Exception) {
+            Log.e(TAG, "加载配置失败", e)
+            emptyList()
+        }
+        
         if (availableConfigs.isNotEmpty()) {
             currentConfig = availableConfigs[0]
             audioRecorder.setConfig(currentConfig!!)
@@ -120,21 +126,19 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun checkPermissions() {
-        val permissions = mutableListOf<String>()
-        
-        // 录音权限
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) 
-            != PackageManager.PERMISSION_GRANTED) {
-            permissions.add(Manifest.permission.RECORD_AUDIO)
-        }
-        
-        // 存储权限 - 由于最低 SDK 版本是 32 (Android 12L)，使用 Scoped Storage，不需要额外的存储权限
-        // 应用可以直接写入应用专用目录或使用 /data 目录
-        if (permissions.isNotEmpty()) {
-            ActivityCompat.requestPermissions(this, permissions.toTypedArray(), PERMISSION_REQUEST_CODE)
+        if (!hasRecordPermissions()) {
+            requestRecordPermissions()
         } else {
             onPermissionsGranted()
         }
+    }
+    
+    private fun hasRecordPermissions(): Boolean {
+        return ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+    }
+    
+    private fun requestRecordPermissions() {
+        ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.RECORD_AUDIO), PERMISSION_REQUEST_CODE)
     }
     
     override fun onRequestPermissionsResult(
@@ -167,6 +171,12 @@ class MainActivity : AppCompatActivity() {
             return
         }
         
+        if (!hasRecordPermissions()) {
+            requestRecordPermissions()
+            return
+        }
+        
+        statusText.text = "准备录音..."
         if (audioRecorder.startRecording()) {
             Log.i(TAG, "Recording started")
         }
@@ -178,6 +188,7 @@ class MainActivity : AppCompatActivity() {
             return
         }
         
+        statusText.text = "正在停止..."
         if (audioRecorder.stopRecording()) {
             Log.i(TAG, "Recording stopped")
         }
@@ -211,12 +222,14 @@ class MainActivity : AppCompatActivity() {
     
     @SuppressLint("SetTextI18n")
     private fun updateRecordingInfo() {
-        val info = audioRecorder.getLastRecordingInfo()
-        recordingInfoText.text = info
-        
         currentConfig?.let { config ->
-            val configInfo = "\n当前配置: ${config.description}"
-            recordingInfoText.text = info + configInfo
+            val configInfo = "当前配置: ${config.description}\n" +
+                    "源: ${config.inputPreset}\n" +
+                    "模式: ${config.performanceMode} | ${config.sharingMode}\n" +
+                    "文件: ${config.outputPath}"
+            recordingInfoText.text = configInfo
+        } ?: run {
+            recordingInfoText.text = "录音信息"
         }
     }
     
