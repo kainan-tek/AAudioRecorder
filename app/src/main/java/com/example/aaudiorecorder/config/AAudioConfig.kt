@@ -6,7 +6,7 @@ import org.json.JSONObject
 import java.io.File
 
 /**
- * AAudio录音配置数据类 - 参考AAudioPlayer的配置管理
+ * AAudio recording configuration data class - based on AAudioPlayer configuration management
  */
 data class AAudioConfig(
     val inputPreset: String = "AAUDIO_INPUT_PRESET_GENERIC",
@@ -16,7 +16,7 @@ data class AAudioConfig(
     val performanceMode: String = "AAUDIO_PERFORMANCE_MODE_LOW_LATENCY",
     val sharingMode: String = "AAUDIO_SHARING_MODE_SHARED",
     val outputPath: String = "",
-    val description: String = "默认录音配置"
+    val description: String = "Default Recording Configuration"
 ) {
     companion object {
         private const val TAG = "AAudioConfig"
@@ -27,15 +27,15 @@ data class AAudioConfig(
             val externalFile = File(CONFIG_FILE_PATH)
             return try {
                 val jsonString = if (externalFile.exists()) {
-                    Log.i(TAG, "从外部文件加载录音配置")
+                    Log.i(TAG, "Loading recording configuration from external file")
                     externalFile.readText()
                 } else {
-                    Log.i(TAG, "从assets加载录音配置")
+                    Log.i(TAG, "Loading recording configuration from assets")
                     context.assets.open(ASSETS_CONFIG_FILE).bufferedReader().use { it.readText() }
                 }
                 parseConfigs(jsonString)
             } catch (e: Exception) {
-                Log.e(TAG, "加载录音配置失败", e)
+                Log.e(TAG, "Failed to load recording configurations", e)
                 getDefaultConfigs()
             }
         }
@@ -52,7 +52,7 @@ data class AAudioConfig(
                     performanceMode = config.optString("performanceMode", "AAUDIO_PERFORMANCE_MODE_LOW_LATENCY"),
                     sharingMode = config.optString("sharingMode", "AAUDIO_SHARING_MODE_SHARED"),
                     outputPath = config.optString("outputPath", ""),
-                    description = config.optString("description", "录音配置")
+                    description = config.optString("description", "Recording Configuration")
                 )
             }
         }
@@ -67,7 +67,7 @@ data class AAudioConfig(
                     performanceMode = "AAUDIO_PERFORMANCE_MODE_LOW_LATENCY",
                     sharingMode = "AAUDIO_SHARING_MODE_SHARED",
                     outputPath = "/data/standard_recording.wav",
-                    description = "标准录音 - 48kHz单声道"
+                    description = "Standard Recording - 48kHz Mono"
                 ),
                 AAudioConfig(
                     inputPreset = "AAUDIO_INPUT_PRESET_VOICE_COMMUNICATION",
@@ -77,7 +77,7 @@ data class AAudioConfig(
                     performanceMode = "AAUDIO_PERFORMANCE_MODE_LOW_LATENCY",
                     sharingMode = "AAUDIO_SHARING_MODE_SHARED",
                     outputPath = "",
-                    description = "语音通话 - 16kHz单声道"
+                    description = "Voice Communication - 16kHz Mono"
                 ),
                 AAudioConfig(
                     inputPreset = "AAUDIO_INPUT_PRESET_VOICE_RECOGNITION",
@@ -87,17 +87,17 @@ data class AAudioConfig(
                     performanceMode = "AAUDIO_PERFORMANCE_MODE_LOW_LATENCY",
                     sharingMode = "AAUDIO_SHARING_MODE_SHARED",
                     outputPath = "/data/voice_recognition.wav",
-                    description = "语音识别 - 16kHz单声道"
+                    description = "Voice Recognition - 16kHz Mono"
                 ),
                 AAudioConfig(
                     inputPreset = "AAUDIO_INPUT_PRESET_CAMCORDER",
-                    sampleRate = 44100,
+                    sampleRate = 48000,
                     channelCount = 2,
                     format = "AAUDIO_FORMAT_PCM_I16",
                     performanceMode = "AAUDIO_PERFORMANCE_MODE_POWER_SAVING",
                     sharingMode = "AAUDIO_SHARING_MODE_SHARED",
                     outputPath = "",
-                    description = "摄像录音 - 44.1kHz立体声"
+                    description = "Camcorder Recording - 48kHz Stereo"
                 ),
                 AAudioConfig(
                     inputPreset = "AAUDIO_INPUT_PRESET_VOICE_PERFORMANCE",
@@ -107,7 +107,7 @@ data class AAudioConfig(
                     performanceMode = "AAUDIO_PERFORMANCE_MODE_LOW_LATENCY",
                     sharingMode = "AAUDIO_SHARING_MODE_EXCLUSIVE",
                     outputPath = "",
-                    description = "高性能语音 - 48kHz独占模式"
+                    description = "High Performance Voice - 48kHz Exclusive Mode"
                 ),
                 AAudioConfig(
                     inputPreset = "AAUDIO_INPUT_PRESET_UNPROCESSED",
@@ -117,34 +117,14 @@ data class AAudioConfig(
                     performanceMode = "AAUDIO_PERFORMANCE_MODE_LOW_LATENCY",
                     sharingMode = "AAUDIO_SHARING_MODE_EXCLUSIVE",
                     outputPath = "/data/raw_stereo_48k.wav",
-                    description = "原始录音 - 48kHz立体声无处理"
-                ),
-                AAudioConfig(
-                    inputPreset = "AAUDIO_INPUT_PRESET_GENERIC",
-                    sampleRate = 44100,
-                    channelCount = 2,
-                    format = "AAUDIO_FORMAT_PCM_I16",
-                    performanceMode = "AAUDIO_PERFORMANCE_MODE_POWER_SAVING",
-                    sharingMode = "AAUDIO_SHARING_MODE_SHARED",
-                    outputPath = "",
-                    description = "音乐录音 - 44.1kHz立体声"
-                ),
-                AAudioConfig(
-                    inputPreset = "AAUDIO_INPUT_PRESET_GENERIC",
-                    sampleRate = 96000,
-                    channelCount = 2,
-                    format = "AAUDIO_FORMAT_PCM_FLOAT",
-                    performanceMode = "AAUDIO_PERFORMANCE_MODE_LOW_LATENCY",
-                    sharingMode = "AAUDIO_SHARING_MODE_EXCLUSIVE",
-                    outputPath = "",
-                    description = "高保真录音 - 96kHz立体声32位浮点"
+                    description = "Raw Recording - 48kHz Stereo Unprocessed"
                 )
             )
         }
     }
     
     /**
-     * 获取输入预设的整数值
+     * Get input preset integer value
      */
     fun getInputPresetValue(): Int {
         return when (inputPreset) {
@@ -154,13 +134,13 @@ data class AAudioConfig(
             "AAUDIO_INPUT_PRESET_VOICE_COMMUNICATION" -> 7
             "AAUDIO_INPUT_PRESET_UNPROCESSED" -> 9
             "AAUDIO_INPUT_PRESET_VOICE_PERFORMANCE" -> 10
-            else -> 1 // 默认GENERIC
+            else -> 1 // Default GENERIC
         }
     }
     
     /**
-     * 获取格式的整数值
-     * 基于 AAudio.h 中的定义：
+     * Get format integer value
+     * Based on definitions in AAudio.h:
      * AAUDIO_FORMAT_PCM_I16 = 1
      * AAUDIO_FORMAT_PCM_FLOAT = 2  
      * AAUDIO_FORMAT_PCM_I24_PACKED = 3
@@ -172,13 +152,13 @@ data class AAudioConfig(
             "AAUDIO_FORMAT_PCM_FLOAT" -> 2
             "AAUDIO_FORMAT_PCM_I24_PACKED" -> 3
             "AAUDIO_FORMAT_PCM_I32" -> 4
-            else -> 1 // 默认PCM_I16
+            else -> 1 // Default PCM_I16
         }
     }
     
     /**
-     * 获取性能模式的整数值
-     * 基于 AAudio.h 中的定义：
+     * Get performance mode integer value
+     * Based on definitions in AAudio.h:
      * AAUDIO_PERFORMANCE_MODE_NONE = 10
      * AAUDIO_PERFORMANCE_MODE_POWER_SAVING = 11
      * AAUDIO_PERFORMANCE_MODE_LOW_LATENCY = 12
@@ -188,13 +168,13 @@ data class AAudioConfig(
             "AAUDIO_PERFORMANCE_MODE_NONE" -> 10
             "AAUDIO_PERFORMANCE_MODE_POWER_SAVING" -> 11
             "AAUDIO_PERFORMANCE_MODE_LOW_LATENCY" -> 12
-            else -> 12 // 默认LOW_LATENCY
+            else -> 12 // Default LOW_LATENCY
         }
     }
     
     /**
-     * 获取共享模式的整数值
-     * 基于 AAudio.h 中的定义：
+     * Get sharing mode integer value
+     * Based on definitions in AAudio.h:
      * AAUDIO_SHARING_MODE_EXCLUSIVE = 0
      * AAUDIO_SHARING_MODE_SHARED = 1
      */
@@ -202,7 +182,7 @@ data class AAudioConfig(
         return when (sharingMode) {
             "AAUDIO_SHARING_MODE_EXCLUSIVE" -> 0
             "AAUDIO_SHARING_MODE_SHARED" -> 1
-            else -> 1 // 默认SHARED
+            else -> 1 // Default SHARED
         }
     }
 }

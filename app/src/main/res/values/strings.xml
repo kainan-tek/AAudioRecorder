@@ -3,32 +3,27 @@
     <string name="button1">START</string>
     <string name="button2">STOP</string>
     
-    <!-- 状态文本 -->
-    <string name="status_ready">准备录音</string>
-    <string name="status_recording">正在录音...</string>
-    <string name="status_stopped">录音已停止</string>
-    <string name="status_playing">正在播放...</string>
-    <string name="status_error">发生错误</string>
+    <!-- Status text -->
+    <string name="status_ready">Ready to Record</string>
+    <string name="status_recording">Recording...</string>
+    <string name="status_stopped">Recording Stopped</string>
+    <string name="status_error">Error Occurred</string>
     
-    <!-- 按钮文本 -->
-    <string name="record_button">开始录音</string>
-    <string name="stop_record_button">停止录音</string>
-    <string name="play_button">播放录音</string>
-    <string name="stop_play_button">停止播放</string>
-    <string name="config_button">录音配置</string>
+    <!-- Button text -->
+    <string name="record_button">Start Record</string>
+    <string name="stop_record_button">Stop Record</string>
+    <string name="config_button">Record Configuration</string>
     
-    <!-- 信息文本 -->
-    <string name="recording_info_default">录音信息</string>
-    <string name="no_recording_file">暂无录音文件</string>
+    <!-- Information text -->
+    <string name="recording_info_default">Record Information</string>
+    <string name="no_recording_file">No Recording File</string>
     
-    <!-- 权限相关 -->
-    <string name="permission_required">需要录音权限</string>
-    <string name="permission_denied">权限被拒绝，无法录音</string>
+    <!-- Permission related -->
+    <string name="permission_required">Recording Permission Required</string>
+    <string name="permission_denied">Permission Denied, Cannot Record</string>
     
-    <!-- 错误信息 -->
-    <string name="error_init_failed">初始化失败</string>
-    <string name="error_start_recording">开始录音失败</string>
-    <string name="error_stop_recording">停止录音失败</string>
-    <string name="error_start_playing">开始播放失败</string>
-    <string name="error_stop_playing">停止播放失败</string>
+    <!-- Error messages -->
+    <string name="error_init_failed">Initialization Failed</string>
+    <string name="error_start_recording">Failed to Start Recording</string>
+    <string name="error_stop_recording">Failed to Stop Recording</string>
 </resources>

@@ -8,7 +8,7 @@
       "performanceMode": "AAUDIO_PERFORMANCE_MODE_LOW_LATENCY",
       "sharingMode": "AAUDIO_SHARING_MODE_SHARED",
       "outputPath": "/data/recorded_48k_1ch_16bit.wav",
-      "description": "标准录音 - 48kHz单声道"
+      "description": "Standard Recording - 48kHz Mono"
     },
     {
       "inputPreset": "AAUDIO_INPUT_PRESET_VOICE_COMMUNICATION",
@@ -18,7 +18,7 @@
       "performanceMode": "AAUDIO_PERFORMANCE_MODE_LOW_LATENCY",
       "sharingMode": "AAUDIO_SHARING_MODE_SHARED",
       "outputPath": "/data/recorded_16k_1ch_16bit.wav",
-      "description": "语音通话 - 16kHz单声道"
+      "description": "Voice Call - 16kHz Mono"
     },
     {
       "inputPreset": "AAUDIO_INPUT_PRESET_VOICE_RECOGNITION",
@@ -28,7 +28,7 @@
       "performanceMode": "AAUDIO_PERFORMANCE_MODE_LOW_LATENCY",
       "sharingMode": "AAUDIO_SHARING_MODE_SHARED",
       "outputPath": "/data/recorded_16k_1ch_16bit.wav",
-      "description": "语音识别 - 16kHz单声道"
+      "description": "Voice Recognition - 16kHz Mono"
     },
     {
       "inputPreset": "AAUDIO_INPUT_PRESET_CAMCORDER",
@@ -38,7 +38,7 @@
       "performanceMode": "AAUDIO_PERFORMANCE_MODE_POWER_SAVING",
       "sharingMode": "AAUDIO_SHARING_MODE_SHARED",
       "outputPath": "/data/recorded_48k_2ch_16bit.wav",
-      "description": "摄像录音 - 48kHz立体声"
+      "description": "Camera Recording - 48kHz Stereo"
     },
     {
       "inputPreset": "AAUDIO_INPUT_PRESET_VOICE_PERFORMANCE",
@@ -48,7 +48,7 @@
       "performanceMode": "AAUDIO_PERFORMANCE_MODE_LOW_LATENCY",
       "sharingMode": "AAUDIO_SHARING_MODE_EXCLUSIVE",
       "outputPath": "/data/recorded_48k_1ch_16bit.wav",
-      "description": "高性能语音 - 48kHz独占模式"
+      "description": "High Performance Voice - 48kHz Exclusive Mode"
     },
     {
       "inputPreset": "AAUDIO_INPUT_PRESET_UNPROCESSED",
@@ -58,7 +58,7 @@
       "performanceMode": "AAUDIO_PERFORMANCE_MODE_LOW_LATENCY",
       "sharingMode": "AAUDIO_SHARING_MODE_EXCLUSIVE",
       "outputPath": "/data/recorded_48k_2ch_16bit.wav",
-      "description": "原始录音 - 48kHz立体声无处理"
+      "description": "Raw Recording - 48kHz Stereo Unprocessed"
     }
   ]
 }

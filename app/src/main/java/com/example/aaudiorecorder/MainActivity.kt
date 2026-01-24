@@ -16,13 +16,13 @@ import com.example.aaudiorecorder.config.AAudioConfig
 import com.example.aaudiorecorder.recorder.AAudioRecorder
 
 /**
- * AAudio录音器主界面
+ * AAudio Recorder Main Activity
  * 
- * 使用说明:
- * 1. 确保设备支持AAudio API (Android 8.1+)
- * 2. 授予录音权限
- * 3. 选择录音配置
- * 4. 开始录音
+ * Usage Instructions:
+ * 1. Ensure device supports AAudio API (Android 8.1+)
+ * 2. Grant recording permissions
+ * 3. Select recording configuration
+ * 4. Start recording
  */
 class MainActivity : AppCompatActivity() {
     
@@ -51,6 +51,7 @@ class MainActivity : AppCompatActivity() {
         checkPermissions()
     }
     
+    @SuppressLint("SetTextI18n")
     private fun initializeViews() {
         recordButton = findViewById(R.id.recordButton)
         stopButton = findViewById(R.id.stopButton)
@@ -62,31 +63,33 @@ class MainActivity : AppCompatActivity() {
         stopButton.setOnClickListener { stopRecording() }
         configButton.setOnClickListener { showConfigDialog() }
         
-        // 初始状态
+        // Initial state
         recordButton.isEnabled = true
         stopButton.isEnabled = false
-        statusText.text = "准备录音"
+        statusText.text = "Ready to record"
     }
     
     private fun initializeAudioRecorder() {
         audioRecorder = AAudioRecorder()
         audioRecorder.setRecordingListener(object : AAudioRecorder.RecordingListener {
+            @SuppressLint("SetTextI18n")
             override fun onRecordingStarted() {
                 runOnUiThread {
                     recordButton.isEnabled = false
                     stopButton.isEnabled = true
                     configButton.isEnabled = false
-                    statusText.text = "正在录音..."
+                    statusText.text = "Recording..."
                     updateRecordingInfo()
                 }
             }
             
+            @SuppressLint("SetTextI18n")
             override fun onRecordingStopped() {
                 runOnUiThread {
                     recordButton.isEnabled = true
                     stopButton.isEnabled = false
                     configButton.isEnabled = true
-                    statusText.text = "录音已停止"
+                    statusText.text = "Recording stopped"
                     updateRecordingInfo()
                 }
             }
@@ -97,18 +100,19 @@ class MainActivity : AppCompatActivity() {
                     recordButton.isEnabled = true
                     stopButton.isEnabled = false
                     configButton.isEnabled = true
-                    statusText.text = "错误: $error"
+                    statusText.text = "Error: $error"
                     Toast.makeText(this@MainActivity, error, Toast.LENGTH_SHORT).show()
                 }
             }
         })
     }
     
+    @SuppressLint("SetTextI18n")
     private fun loadConfigurations() {
         availableConfigs = try {
             AAudioConfig.loadConfigs(this)
         } catch (e: Exception) {
-            Log.e(TAG, "加载配置失败", e)
+            Log.e(TAG, "Failed to load configurations", e)
             emptyList()
         }
         
@@ -119,7 +123,7 @@ class MainActivity : AppCompatActivity() {
             Log.i(TAG, "Loaded ${availableConfigs.size} recording configurations")
         } else {
             Log.e(TAG, "Failed to load recording configurations")
-            statusText.text = "配置加载失败"
+            statusText.text = "Configuration load failed"
             recordButton.isEnabled = false
             configButton.isEnabled = false
         }
@@ -141,6 +145,7 @@ class MainActivity : AppCompatActivity() {
         ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.RECORD_AUDIO), PERMISSION_REQUEST_CODE)
     }
     
+    @SuppressLint("SetTextI18n")
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<out String>,
@@ -154,20 +159,22 @@ class MainActivity : AppCompatActivity() {
             if (allGranted) {
                 onPermissionsGranted()
             } else {
-                Toast.makeText(this, "需要录音权限才能使用此应用", Toast.LENGTH_LONG).show()
-                statusText.text = "权限被拒绝"
+                Toast.makeText(this, "Recording permission required to use this app", Toast.LENGTH_LONG).show()
+                statusText.text = "Permission denied"
             }
         }
     }
     
+    @SuppressLint("SetTextI18n")
     private fun onPermissionsGranted() {
-        statusText.text = "准备录音"
+        statusText.text = "Ready to record"
         Log.i(TAG, "All permissions granted")
     }
     
+    @SuppressLint("SetTextI18n")
     private fun startRecording() {
         if (audioRecorder.isRecording()) {
-            Toast.makeText(this, "已在录音中", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Already recording", Toast.LENGTH_SHORT).show()
             return
         }
         
@@ -176,19 +183,20 @@ class MainActivity : AppCompatActivity() {
             return
         }
         
-        statusText.text = "准备录音..."
+        statusText.text = "Preparing to record..."
         if (audioRecorder.startRecording()) {
             Log.i(TAG, "Recording started")
         }
     }
     
+    @SuppressLint("SetTextI18n")
     private fun stopRecording() {
         if (!audioRecorder.isRecording()) {
-            Toast.makeText(this, "当前未在录音", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Not currently recording", Toast.LENGTH_SHORT).show()
             return
         }
         
-        statusText.text = "正在停止..."
+        statusText.text = "Stopping..."
         if (audioRecorder.stopRecording()) {
             Log.i(TAG, "Recording stopped")
         }
@@ -197,7 +205,7 @@ class MainActivity : AppCompatActivity() {
     @SuppressLint("SetTextI18n")
     private fun showConfigDialog() {
         if (availableConfigs.isEmpty()) {
-            Toast.makeText(this, "没有可用的录音配置", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "No available recording configurations", Toast.LENGTH_SHORT).show()
             return
         }
         
@@ -205,31 +213,31 @@ class MainActivity : AppCompatActivity() {
         val currentIndex = availableConfigs.indexOf(currentConfig)
         
         AlertDialog.Builder(this)
-            .setTitle("选择录音配置")
+            .setTitle("Select Recording Configuration")
             .setSingleChoiceItems(configNames, currentIndex) { dialog, which ->
                 currentConfig = availableConfigs[which]
                 audioRecorder.setConfig(currentConfig!!)
                 updateRecordingInfo()
                 
-                Toast.makeText(this, "已切换到: ${currentConfig!!.description}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Switched to: ${currentConfig!!.description}", Toast.LENGTH_SHORT).show()
                 Log.i(TAG, "Config changed to: ${currentConfig!!.description}")
                 
                 dialog.dismiss()
             }
-            .setNegativeButton("取消", null)
+            .setNegativeButton("Cancel", null)
             .show()
     }
     
     @SuppressLint("SetTextI18n")
     private fun updateRecordingInfo() {
         currentConfig?.let { config ->
-            val configInfo = "当前配置: ${config.description}\n" +
-                    "源: ${config.inputPreset}\n" +
-                    "模式: ${config.performanceMode} | ${config.sharingMode}\n" +
-                    "文件: ${config.outputPath}"
+            val configInfo = "Current Config: ${config.description}\n" +
+                    "Source: ${config.inputPreset}\n" +
+                    "Mode: ${config.performanceMode} | ${config.sharingMode}\n" +
+                    "File: ${config.outputPath}"
             recordingInfoText.text = configInfo
         } ?: run {
-            recordingInfoText.text = "录音信息"
+            recordingInfoText.text = "Recording Info"
         }
     }
     

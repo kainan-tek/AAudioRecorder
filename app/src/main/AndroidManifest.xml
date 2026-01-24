@@ -3,20 +3,20 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="com.example.aaudiorecorder">
 
-    <!-- 允许录制音频 - 此权限为应用核心功能必需 -->
+    <!-- Allow audio recording - This permission is required for core app functionality -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     
-    <!-- Android 13 (API 33) 及以上版本，使用更精确的媒体权限，仅读取音频文件 -->
+    <!-- Android 13 (API 33) and above, use more precise media permissions, only read audio files -->
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" tools:targetApi="33" />
     
-    <!-- Android 12 (API 32) 及以下版本，读取外部存储权限 -->
+    <!-- Android 12 (API 32) and below, read external storage permission -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     
-    <!-- 对于Android 9 (API 28) 及以下版本，写入外部存储权限 -->
+    <!-- For Android 9 (API 28) and below, write external storage permission -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28"
         tools:ignore="ScopedStorage" />
 
-    <!-- 声明应用使用麦克风功能，设置required=true表示应用需要麦克风功能才能正常运行 -->
+    <!-- Declare that the app uses microphone functionality, required=true means the app needs microphone to function properly -->
     <uses-feature android:name="android.hardware.microphone" android:required="true" />
 
     <application

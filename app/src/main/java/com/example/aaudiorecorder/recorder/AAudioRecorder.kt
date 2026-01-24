@@ -4,7 +4,7 @@ import android.util.Log
 import com.example.aaudiorecorder.config.AAudioConfig
 
 /**
- * AAudio录音器 - 参考AAudioPlayer的架构设计
+ * AAudio Recorder - based on AAudioPlayer architecture design
  */
 class AAudioRecorder {
     companion object {
@@ -35,14 +35,14 @@ class AAudioRecorder {
     }
     
     /**
-     * 设置录音监听器
+     * Set recording listener
      */
     fun setRecordingListener(listener: RecordingListener?) {
         this.listener = listener
     }
     
     /**
-     * 设置录音配置
+     * Set recording configuration
      */
     fun setConfig(config: AAudioConfig) {
         if (isRecording) {
@@ -54,7 +54,7 @@ class AAudioRecorder {
         Log.d(TAG, "Config updated: ${config.description}")
         Log.d(TAG, "Using output path: ${config.outputPath}")
         
-        // 应用配置到native层，直接传递原始的outputPath
+        // Apply configuration to native layer, directly pass original outputPath
         setNativeConfig(
             config.getInputPresetValue(),
             config.sampleRate,
@@ -62,17 +62,17 @@ class AAudioRecorder {
             config.getFormatValue(),
             config.getPerformanceModeValue(),
             config.getSharingModeValue(),
-            config.outputPath  // 直接使用原始路径，让C++代码处理文件名生成
+            config.outputPath  // Use original path directly, let C++ code handle filename generation
         )
     }
 
     /**
-     * 开始录音
+     * Start recording
      */
     fun startRecording(): Boolean {
         if (isRecording) {
             Log.w(TAG, "Already recording")
-            listener?.onRecordingError("已在录音中")
+            listener?.onRecordingError("Already recording")
             return false
         }
         
@@ -80,7 +80,7 @@ class AAudioRecorder {
         
         val success = startNativeRecording()
         if (!success) {
-            listener?.onRecordingError("启动录音失败")
+            listener?.onRecordingError("Failed to start recording")
             Log.e(TAG, "Failed to start recording")
         }
         
@@ -88,12 +88,12 @@ class AAudioRecorder {
     }
     
     /**
-     * 停止录音
+     * Stop recording
      */
     fun stopRecording(): Boolean {
         if (!isRecording) {
             Log.w(TAG, "Not recording")
-            listener?.onRecordingError("当前未在录音")
+            listener?.onRecordingError("Not currently recording")
             return false
         }
         
@@ -101,7 +101,7 @@ class AAudioRecorder {
         
         val success = stopNativeRecording()
         if (!success) {
-            listener?.onRecordingError("停止录音失败")
+            listener?.onRecordingError("Failed to stop recording")
             Log.e(TAG, "Failed to stop recording")
         }
         
@@ -109,14 +109,14 @@ class AAudioRecorder {
     }
 
     /**
-     * 检查是否正在录音
+     * Check if currently recording
      */
     fun isRecording(): Boolean {
         return isRecording
     }
     
     /**
-     * 释放资源
+     * Release resources
      */
     fun release() {
         if (isRecording) {
@@ -126,7 +126,7 @@ class AAudioRecorder {
         Log.d(TAG, "Resources released")
     }
     
-    // Native方法声明
+    // Native method declarations
     private external fun initializeNative(): Boolean
     private external fun setNativeConfig(
         inputPreset: Int,
@@ -141,7 +141,7 @@ class AAudioRecorder {
     private external fun stopNativeRecording(): Boolean
     private external fun releaseNative()
     
-    // 从Native层调用的回调方法
+    // Callback methods called from Native layer
     @Suppress("unused")
     private fun onNativeRecordingStarted() {
         isRecording = true

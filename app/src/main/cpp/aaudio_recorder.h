@@ -1,4 +1,4 @@
-// AAudio录音器头文件
+// AAudio recorder header file
 #ifndef AAUDIO_RECORDER_H
 #define AAUDIO_RECORDER_H
 
@@ -13,7 +13,7 @@
 #include <aaudio/AAudio.h>
 #include <android/log.h>
 
-// 日志标签
+// Log tags
 #define LOG_TAG "AAudioRecorder"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
@@ -93,31 +93,31 @@ JNIEXPORT void JNICALL Java_com_example_aaudiorecorder_recorder_AAudioRecorder_r
 }
 
 /**
- * WAV文件写入类 (录音用)
- * 支持WAV文件的写入和音频数据保存
+ * WAV file writing class (for recording)
+ * Supports WAV file writing and audio data saving
  */
 class WavFileWriter {
 public:
     WavFileWriter();
     ~WavFileWriter();
 
-    // 以指定参数打开WAV文件进行写入
+    // Open WAV file for writing with specified parameters
     bool open(const std::string& filePath, int32_t sampleRate, int32_t channelCount, aaudio_format_t format);
 
-    // 关闭WAV文件
+    // Close WAV file
     void close();
 
-    // 写入音频数据
+    // Write audio data
     bool writeData(const void* data, size_t size);
 
-    // 获取文件是否打开
+    // Get whether file is open
     bool isOpen() const;
 
-    // 获取每个采样的字节数
+    // Get bytes per sample
     static int32_t getBytesPerSample(aaudio_format_t format);
 
 private:
-    // WAV文件头定义
+    // WAV file header definition
     struct WAVHeader {
         char chunkId[4];                         // "RIFF"
         [[maybe_unused]] uint32_t chunkSize;     // 36 + subchunk2Size
@@ -134,14 +134,14 @@ private:
         [[maybe_unused]] uint32_t subchunk2Size; // numSamples * numChannels * bitsPerSample / 8
     };
 
-    std::string mFilePath;     // 文件路径
-    std::ofstream mFileStream; // 文件流
-    int32_t mSampleRate;       // 采样率
-    int32_t mChannelCount;     // 声道数
-    aaudio_format_t mFormat;   // 音频格式
-    uint32_t mDataSize;        // 数据大小
+    std::string mFilePath;     // File path
+    std::ofstream mFileStream; // File stream
+    int32_t mSampleRate;       // Sample rate
+    int32_t mChannelCount;     // Channel count
+    aaudio_format_t mFormat;   // Audio format
+    uint32_t mDataSize;        // Data size
 
-    // 写入WAV文件头
+    // Write WAV file header
     void writeHeader(uint32_t dataSize);
 };
 

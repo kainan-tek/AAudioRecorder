@@ -8,20 +8,20 @@
 #include <sstream>
 #include <string>
 
-// 简化的录音器状态结构
+// Simplified recorder state structure
 struct AudioRecorderState {
     AAudioStream* stream = nullptr;
     std::unique_ptr<WavFileWriter> wavWriter;
     std::atomic<bool> isRecording{false};
 
-    // Java回调相关
+    // Java callback related
     JavaVM* jvm = nullptr;
     jobject recorderInstance = nullptr;
     jmethodID onRecordingStartedMethod = nullptr;
     jmethodID onRecordingStoppedMethod = nullptr;
     jmethodID onRecordingErrorMethod = nullptr;
 
-    // 配置参数
+    // Configuration parameters
     aaudio_input_preset_t inputPreset = AAUDIO_INPUT_PRESET_GENERIC;
     int32_t sampleRate = 48000;
     int32_t channelCount = 1;
@@ -33,7 +33,7 @@ struct AudioRecorderState {
 
 static AudioRecorderState g_recorder;
 
-// 简化的Java回调
+// Simplified Java callbacks
 static void notifyRecordingStarted() {
     if (g_recorder.jvm && g_recorder.recorderInstance && g_recorder.onRecordingStartedMethod) {
         JNIEnv* env;
@@ -63,29 +63,29 @@ static void notifyRecordingError(const std::string& error) {
     }
 }
 
-// 生成录音文件名或使用配置的完整路径
+// Generate recording filename or use configured full path
 static std::string getRecordingFilePath() {
-    // 如果outputPath已经是完整的文件路径（以.wav结尾），直接使用
+    // If outputPath is already a complete file path (ending with .wav), use it directly
     if (!g_recorder.outputPath.empty() && (g_recorder.outputPath.length() > 4) &&
         (g_recorder.outputPath.substr(g_recorder.outputPath.length() - 4) == ".wav")) {
         return g_recorder.outputPath;
     }
 
-    // 否则生成自动文件名（outputPath为空时）
+    // Otherwise generate automatic filename (when outputPath is empty)
     auto now = std::chrono::system_clock::now();
     auto time_t = std::chrono::system_clock::to_time_t(now);
     auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % 1000;
 
     std::ostringstream oss;
 
-    // 使用默认的 /data 目录
+    // Use default /data directory
     oss << "/data/";
     oss << "rec_" << std::put_time(std::localtime(&time_t), "%Y%m%d_%H%M%S");
     oss << "_" << std::setfill('0') << std::setw(3) << ms.count();
     oss << "_" << (g_recorder.sampleRate / 1000) << "k";
     oss << "_" << (g_recorder.channelCount == 1 ? "mono" : std::to_string(g_recorder.channelCount) + "ch");
 
-    // 格式标识
+    // Format identifier
     switch (g_recorder.format) {
     case AAUDIO_FORMAT_PCM_I16:
         oss << "_16bit";
@@ -109,7 +109,7 @@ static std::string getRecordingFilePath() {
     return oss.str();
 }
 
-// 音频回调函数
+// Audio callback function
 static aaudio_data_callback_result_t
 audioCallback(AAudioStream* stream, void* userData, void* audioData, int32_t numFrames) {
     if (!g_recorder.isRecording.load(std::memory_order_acquire)) {
@@ -119,11 +119,11 @@ audioCallback(AAudioStream* stream, void* userData, void* audioData, int32_t num
     if (!g_recorder.wavWriter || !g_recorder.wavWriter->isOpen()) {
         LOGE("WAV writer not available");
         g_recorder.isRecording.store(false, std::memory_order_release);
-        notifyRecordingError("WAV文件写入器未打开");
+        notifyRecordingError("WAV file writer not opened");
         return AAUDIO_CALLBACK_RESULT_STOP;
     }
 
-    // 计算需要写入的字节数
+    // Calculate bytes to write
     int32_t channelCount = AAudioStream_getChannelCount(stream);
     int32_t bytesPerSample;
 
@@ -141,35 +141,35 @@ audioCallback(AAudioStream* stream, void* userData, void* audioData, int32_t num
         bytesPerSample = 4;
         break;
     default:
-        bytesPerSample = 2; // 默认为16位
+        bytesPerSample = 2; // Default to 16-bit
         break;
     }
 
     int32_t bytesToWrite = numFrames * channelCount * bytesPerSample;
 
-    // 写入音频数据到WAV文件
+    // Write audio data to WAV file
     if (!g_recorder.wavWriter->writeData(audioData, static_cast<size_t>(bytesToWrite))) {
         LOGE("Failed to write audio data to WAV file");
         g_recorder.isRecording.store(false, std::memory_order_release);
-        notifyRecordingError("写入音频数据失败");
+        notifyRecordingError("Failed to write audio data");
         return AAUDIO_CALLBACK_RESULT_STOP;
     }
 
     return AAUDIO_CALLBACK_RESULT_CONTINUE;
 }
 
-// 错误回调函数
+// Error callback function
 static void errorCallback(AAudioStream* stream, void* userData, aaudio_result_t error) {
     LOGE("AAudio error callback: %s", AAudio_convertResultToText(error));
     g_recorder.isRecording.store(false, std::memory_order_release);
 
-    // 构建错误消息
-    std::string errorMsg = "录音流错误: ";
+    // Build error message
+    std::string errorMsg = "Recording stream error: ";
     errorMsg += AAudio_convertResultToText(error);
     notifyRecordingError(errorMsg);
 }
 
-// 创建AAudio流
+// Create AAudio stream
 static bool createAAudioStream() {
     AAudioStreamBuilder* builder = nullptr;
     aaudio_result_t result = AAudio_createStreamBuilder(&builder);
@@ -179,7 +179,7 @@ static bool createAAudioStream() {
         return false;
     }
 
-    // 配置录音流
+    // Configure recording stream
     AAudioStreamBuilder_setDirection(builder, AAUDIO_DIRECTION_INPUT);
     AAudioStreamBuilder_setSampleRate(builder, g_recorder.sampleRate);
     AAudioStreamBuilder_setChannelCount(builder, g_recorder.channelCount);
@@ -188,11 +188,11 @@ static bool createAAudioStream() {
     AAudioStreamBuilder_setSharingMode(builder, g_recorder.sharingMode);
     AAudioStreamBuilder_setInputPreset(builder, g_recorder.inputPreset);
 
-    // 设置回调
+    // Set callbacks
     AAudioStreamBuilder_setDataCallback(builder, audioCallback, nullptr);
     AAudioStreamBuilder_setErrorCallback(builder, errorCallback, nullptr);
 
-    // 创建流
+    // Create stream
     result = AAudioStreamBuilder_openStream(builder, &g_recorder.stream);
     AAudioStreamBuilder_delete(builder);
 
@@ -201,7 +201,7 @@ static bool createAAudioStream() {
         return false;
     }
 
-    // 获取实际的流参数
+    // Get actual stream parameters
     int32_t actualSampleRate = AAudioStream_getSampleRate(g_recorder.stream);
     int32_t actualChannelCount = AAudioStream_getChannelCount(g_recorder.stream);
     aaudio_format_t actualFormat = AAudioStream_getFormat(g_recorder.stream);
@@ -209,7 +209,7 @@ static bool createAAudioStream() {
     LOGI("Recording stream created - Sample Rate: %d, Channels: %d, Format: %d", actualSampleRate, actualChannelCount,
          actualFormat);
 
-    // 更新实际参数
+    // Update actual parameters
     g_recorder.sampleRate = actualSampleRate;
     g_recorder.channelCount = actualChannelCount;
     g_recorder.format = actualFormat;
@@ -217,14 +217,14 @@ static bool createAAudioStream() {
     return true;
 }
 
-// JNI方法实现
+// JNI method implementations
 extern "C" {
 
 JNIEXPORT jboolean JNICALL Java_com_example_aaudiorecorder_recorder_AAudioRecorder_initializeNative(JNIEnv* env,
                                                                                                     jobject thiz) {
     LOGI("Initializing AAudio recorder");
 
-    // 保存Java对象引用
+    // Save Java object reference
     if (g_recorder.jvm == nullptr) {
         env->GetJavaVM(&g_recorder.jvm);
     }
@@ -234,7 +234,7 @@ JNIEXPORT jboolean JNICALL Java_com_example_aaudiorecorder_recorder_AAudioRecord
     }
     g_recorder.recorderInstance = env->NewGlobalRef(thiz);
 
-    // 获取回调方法ID
+    // Get callback method IDs
     jclass clazz = env->GetObjectClass(thiz);
     if (clazz == nullptr) {
         LOGE("Failed to get object class");
@@ -300,29 +300,29 @@ JNIEXPORT jboolean JNICALL Java_com_example_aaudiorecorder_recorder_AAudioRecord
 
     LOGI("Starting recording");
 
-    // 创建AAudio流
+    // Create AAudio stream
     if (!createAAudioStream()) {
-        notifyRecordingError("创建录音流失败");
+        notifyRecordingError("Failed to create recording stream");
         return JNI_FALSE;
     }
 
-    // 获取文件路径并创建WAV写入器
+    // Get file path and create WAV writer
     std::string filePath = getRecordingFilePath();
     g_recorder.wavWriter = std::make_unique<WavFileWriter>();
 
     if (!g_recorder.wavWriter->open(filePath, g_recorder.sampleRate, g_recorder.channelCount, g_recorder.format)) {
         LOGE("Failed to open WAV file: %s", filePath.c_str());
-        notifyRecordingError("创建录音文件失败");
+        notifyRecordingError("Failed to create recording file");
         return JNI_FALSE;
     }
 
-    // 启动录音流
+    // Start recording stream
     aaudio_result_t result = AAudioStream_requestStart(g_recorder.stream);
     if (result != AAUDIO_OK) {
         LOGE("Failed to start recording stream: %s", AAudio_convertResultToText(result));
         g_recorder.wavWriter->close();
         g_recorder.wavWriter.reset();
-        notifyRecordingError("启动录音流失败");
+        notifyRecordingError("Failed to start recording stream");
         return JNI_FALSE;
     }
 
@@ -343,13 +343,13 @@ JNIEXPORT jboolean JNICALL Java_com_example_aaudiorecorder_recorder_AAudioRecord
 
     LOGI("Stopping recording");
 
-    // 首先设置停止标志
+    // First set stop flag
     g_recorder.isRecording.store(false, std::memory_order_release);
 
-    // 等待一小段时间让回调函数完成
+    // Wait a short time for callback function to complete
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
-    // 停止录音流
+    // Stop recording stream
     if (g_recorder.stream) {
         aaudio_result_t result = AAudioStream_requestStop(g_recorder.stream);
         if (result != AAUDIO_OK) {
@@ -363,7 +363,7 @@ JNIEXPORT jboolean JNICALL Java_com_example_aaudiorecorder_recorder_AAudioRecord
         g_recorder.stream = nullptr;
     }
 
-    // 关闭WAV文件
+    // Close WAV file
     if (g_recorder.wavWriter) {
         g_recorder.wavWriter->close();
         g_recorder.wavWriter.reset();
@@ -380,12 +380,12 @@ JNIEXPORT void JNICALL Java_com_example_aaudiorecorder_recorder_AAudioRecorder_r
                                                                                              jobject thiz) {
     LOGI("Releasing AAudio recorder");
 
-    // 停止录音
+    // Stop recording
     if (g_recorder.isRecording.load()) {
         Java_com_example_aaudiorecorder_recorder_AAudioRecorder_stopNativeRecording(env, thiz);
     }
 
-    // 清理Java引用
+    // Clean up Java references
     if (g_recorder.recorderInstance) {
         env->DeleteGlobalRef(g_recorder.recorderInstance);
         g_recorder.recorderInstance = nullptr;
@@ -401,7 +401,7 @@ JNIEXPORT void JNICALL Java_com_example_aaudiorecorder_recorder_AAudioRecorder_r
 
 } // extern "C"
 
-// WavFileWriter 类实现
+// WavFileWriter class implementation
 WavFileWriter::WavFileWriter() : mSampleRate(0), mChannelCount(0), mFormat(AAUDIO_FORMAT_PCM_I16), mDataSize(0) {}
 
 WavFileWriter::~WavFileWriter() { close(); }
@@ -410,7 +410,7 @@ bool WavFileWriter::open(const std::string& filePath,
                          int32_t sampleRate,
                          int32_t channelCount,
                          aaudio_format_t format) {
-    close(); // 确保之前的文件已关闭
+    close(); // Ensure previous file is closed
 
     mFilePath = filePath;
     mSampleRate = sampleRate;
@@ -424,7 +424,7 @@ bool WavFileWriter::open(const std::string& filePath,
         return false;
     }
 
-    // 写入初始的WAV头（数据大小为0）
+    // Write initial WAV header (data size 0)
     writeHeader(0);
 
     LOGI("WAV file opened for writing: %s", filePath.c_str());
@@ -433,7 +433,7 @@ bool WavFileWriter::open(const std::string& filePath,
 
 void WavFileWriter::close() {
     if (mFileStream.is_open()) {
-        // 更新WAV头中的数据大小
+        // Update data size in WAV header
         writeHeader(mDataSize);
         mFileStream.close();
         LOGI("WAV file closed: %s, final size: %u bytes", mFilePath.c_str(), mDataSize);
@@ -468,7 +468,7 @@ int32_t WavFileWriter::getBytesPerSample(aaudio_format_t format) {
     case AAUDIO_FORMAT_PCM_I32:
         return 4;
     default:
-        return 2; // 默认为16位
+        return 2; // Default to 16-bit
     }
 }
 
@@ -477,18 +477,18 @@ void WavFileWriter::writeHeader(uint32_t dataSize) {
         return;
     }
 
-    WAVHeader header = {}; // 初始化所有字段为0
+    WAVHeader header = {}; // Initialize all fields to 0
 
-    // RIFF头
+    // RIFF header
     memcpy(header.chunkId, "RIFF", 4);
     header.chunkSize = 36 + dataSize;
     memcpy(header.format, "WAVE", 4);
 
-    // fmt子块
+    // fmt subchunk
     memcpy(header.subchunk1Id, "fmt ", 4);
     header.subchunk1Size = 16;
 
-    // 根据格式设置audioFormat
+    // Set audioFormat based on format
     if (mFormat == AAUDIO_FORMAT_PCM_FLOAT) {
         header.audioFormat = 3; // IEEE float
     } else {
@@ -501,11 +501,11 @@ void WavFileWriter::writeHeader(uint32_t dataSize) {
     header.blockAlign = static_cast<uint16_t>(mChannelCount * getBytesPerSample(mFormat));
     header.byteRate = header.sampleRate * header.blockAlign;
 
-    // data子块
+    // data subchunk
     memcpy(header.subchunk2Id, "data", 4);
     header.subchunk2Size = dataSize;
 
-    // 写入头部
+    // Write header
     mFileStream.seekp(0, std::ios::beg);
     mFileStream.write(reinterpret_cast<const char*>(&header), sizeof(header));
     mFileStream.flush();
