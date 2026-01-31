@@ -10,13 +10,13 @@ import java.io.File
  * AAudio recording configuration data class - optimized with validation
  */
 data class AAudioConfig(
-    val inputPreset: String = AAudioConstants.INPUT_PRESET_GENERIC,
+    val inputPreset: String = "AAUDIO_INPUT_PRESET_GENERIC",
     val sampleRate: Int = 48000,
     val channelCount: Int = 1,
     val format: Int = 16, // Use bit depth directly (16, 24, 32)
-    val performanceMode: String = AAudioConstants.PERFORMANCE_MODE_LOW_LATENCY,
-    val sharingMode: String = AAudioConstants.SHARING_MODE_SHARED,
-    val outputPath: String = "",
+    val performanceMode: String = "AAUDIO_PERFORMANCE_MODE_LOW_LATENCY",
+    val sharingMode: String = "AAUDIO_SHARING_MODE_SHARED",
+    val outputPath: String = AAudioConstants.DEFAULT_RECORD_FILE,
     val description: String = "Default Recording Configuration"
 ) {
     
@@ -32,26 +32,6 @@ data class AAudioConfig(
             "Invalid format bit depth: $format (must be 16, 24, or 32)" 
         }
     }
-    
-    /**
-     * Get input preset integer value
-     */
-    fun getInputPresetValue(): Int = AAudioConstants.getInputPresetValue(inputPreset)
-    
-    /**
-     * Get format integer value
-     */
-    fun getFormatValue(): Int = AAudioConstants.getFormatValueFromBitDepth(format)
-    
-    /**
-     * Get performance mode integer value
-     */
-    fun getPerformanceModeValue(): Int = AAudioConstants.getPerformanceModeValue(performanceMode)
-    
-    /**
-     * Get sharing mode integer value
-     */
-    fun getSharingModeValue(): Int = AAudioConstants.getSharingModeValue(sharingMode)
     
     companion object {
         private const val TAG = "AAudioConfig"
@@ -78,30 +58,29 @@ data class AAudioConfig(
             return (0 until configsArray.length()).map { i ->
                 val config = configsArray.getJSONObject(i)
                 AAudioConfig(
-                    inputPreset = config.optString("inputPreset", AAudioConstants.INPUT_PRESET_GENERIC),
+                    inputPreset = config.optString("inputPreset", "AAUDIO_INPUT_PRESET_GENERIC"),
                     sampleRate = config.optInt("sampleRate", 48000),
                     channelCount = config.optInt("channelCount", 1),
                     format = config.optInt("format", 16),
-                    performanceMode = config.optString("performanceMode", AAudioConstants.PERFORMANCE_MODE_LOW_LATENCY),
-                    sharingMode = config.optString("sharingMode", AAudioConstants.SHARING_MODE_SHARED),
-                    outputPath = config.optString("outputPath", ""),
+                    performanceMode = config.optString("performanceMode", "AAUDIO_PERFORMANCE_MODE_LOW_LATENCY"),
+                    sharingMode = config.optString("sharingMode", "AAUDIO_SHARING_MODE_SHARED"),
+                    outputPath = config.optString("outputPath", AAudioConstants.DEFAULT_RECORD_FILE),
                     description = config.optString("description", "Recording Configuration")
                 )
             }
         }
         
         private fun getDefaultConfigs(): List<AAudioConfig> {
-            // 直接返回硬编码的emergency配置，不再重复尝试读取assets
             Log.w(TAG, "Using hardcoded emergency configuration")
             return listOf(
                 AAudioConfig(
-                    inputPreset = AAudioConstants.INPUT_PRESET_GENERIC,
+                    inputPreset = "AAUDIO_INPUT_PRESET_GENERIC",
                     sampleRate = 48000,
                     channelCount = 1,
                     format = 16,
-                    performanceMode = AAudioConstants.PERFORMANCE_MODE_LOW_LATENCY,
-                    sharingMode = AAudioConstants.SHARING_MODE_SHARED,
-                    outputPath = AAudioConstants.DEFAULT_RECORDING_FILE,
+                    performanceMode = "AAUDIO_PERFORMANCE_MODE_LOW_LATENCY",
+                    sharingMode = "AAUDIO_SHARING_MODE_SHARED",
+                    outputPath = AAudioConstants.DEFAULT_RECORD_FILE,
                     description = "Emergency Fallback - Generic Recording"
                 )
             )

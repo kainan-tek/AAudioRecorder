@@ -49,17 +49,17 @@ class AAudioRecorder {
         }
         
         currentConfig = config
-        Log.i(TAG, "Configuration updated: ${config.description}")
+        Log.i(TAG, "Configuration updated: ${currentConfig.description}")
         
         // Apply configuration to native layer
         setNativeConfig(
-            config.getInputPresetValue(),
-            config.sampleRate,
-            config.channelCount,
-            config.getFormatValue(),
-            config.getPerformanceModeValue(),
-            config.getSharingModeValue(),
-            config.outputPath
+            AAudioConstants.getInputPreset(currentConfig.inputPreset),
+            currentConfig.sampleRate,
+            currentConfig.channelCount,
+            AAudioConstants.getFormatFromBitDepth(currentConfig.format),
+            AAudioConstants.getPerformanceMode(currentConfig.performanceMode),
+            AAudioConstants.getSharingMode(currentConfig.sharingMode),
+            currentConfig.outputPath
         )
     }
 
