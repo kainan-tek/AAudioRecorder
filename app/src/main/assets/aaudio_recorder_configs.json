@@ -4,61 +4,81 @@
       "inputPreset": "AAUDIO_INPUT_PRESET_GENERIC",
       "sampleRate": 48000,
       "channelCount": 1,
-      "format": "AAUDIO_FORMAT_PCM_I16",
+      "format": 16,
       "performanceMode": "AAUDIO_PERFORMANCE_MODE_LOW_LATENCY",
       "sharingMode": "AAUDIO_SHARING_MODE_SHARED",
       "outputPath": "/data/recorded_48k_1ch_16bit.wav",
-      "description": "Standard Recording - 48kHz Mono"
-    },
-    {
-      "inputPreset": "AAUDIO_INPUT_PRESET_VOICE_COMMUNICATION",
-      "sampleRate": 16000,
-      "channelCount": 1,
-      "format": "AAUDIO_FORMAT_PCM_I16",
-      "performanceMode": "AAUDIO_PERFORMANCE_MODE_LOW_LATENCY",
-      "sharingMode": "AAUDIO_SHARING_MODE_SHARED",
-      "outputPath": "/data/recorded_16k_1ch_16bit.wav",
-      "description": "Voice Call - 16kHz Mono"
-    },
-    {
-      "inputPreset": "AAUDIO_INPUT_PRESET_VOICE_RECOGNITION",
-      "sampleRate": 16000,
-      "channelCount": 1,
-      "format": "AAUDIO_FORMAT_PCM_I16",
-      "performanceMode": "AAUDIO_PERFORMANCE_MODE_LOW_LATENCY",
-      "sharingMode": "AAUDIO_SHARING_MODE_SHARED",
-      "outputPath": "/data/recorded_16k_1ch_16bit.wav",
-      "description": "Voice Recognition - 16kHz Mono"
+      "description": "Generic Recording - 48kHz Mono 16-bit"
     },
     {
       "inputPreset": "AAUDIO_INPUT_PRESET_CAMCORDER",
       "sampleRate": 48000,
       "channelCount": 2,
-      "format": "AAUDIO_FORMAT_PCM_I16",
+      "format": 16,
       "performanceMode": "AAUDIO_PERFORMANCE_MODE_POWER_SAVING",
       "sharingMode": "AAUDIO_SHARING_MODE_SHARED",
       "outputPath": "/data/recorded_48k_2ch_16bit.wav",
-      "description": "Camera Recording - 48kHz Stereo"
+      "description": "Camcorder Recording - 48kHz Stereo 16-bit"
     },
     {
-      "inputPreset": "AAUDIO_INPUT_PRESET_VOICE_PERFORMANCE",
-      "sampleRate": 48000,
+      "inputPreset": "AAUDIO_INPUT_PRESET_VOICE_RECOGNITION",
+      "sampleRate": 16000,
       "channelCount": 1,
-      "format": "AAUDIO_FORMAT_PCM_I16",
+      "format": 16,
       "performanceMode": "AAUDIO_PERFORMANCE_MODE_LOW_LATENCY",
-      "sharingMode": "AAUDIO_SHARING_MODE_EXCLUSIVE",
-      "outputPath": "/data/recorded_48k_1ch_16bit.wav",
-      "description": "High Performance Voice - 48kHz Exclusive Mode"
+      "sharingMode": "AAUDIO_SHARING_MODE_SHARED",
+      "outputPath": "/data/recorded_16k_1ch_16bit.wav",
+      "description": "Voice Recognition - 16kHz Mono 16-bit"
+    },
+    {
+      "inputPreset": "AAUDIO_INPUT_PRESET_VOICE_COMMUNICATION",
+      "sampleRate": 16000,
+      "channelCount": 1,
+      "format": 16,
+      "performanceMode": "AAUDIO_PERFORMANCE_MODE_LOW_LATENCY",
+      "sharingMode": "AAUDIO_SHARING_MODE_SHARED",
+      "outputPath": "/data/recorded_16k_1ch_16bit.wav",
+      "description": "Voice Communication - 16kHz Mono 16-bit"
     },
     {
       "inputPreset": "AAUDIO_INPUT_PRESET_UNPROCESSED",
       "sampleRate": 48000,
       "channelCount": 2,
-      "format": "AAUDIO_FORMAT_PCM_I16",
+      "format": 16,
       "performanceMode": "AAUDIO_PERFORMANCE_MODE_LOW_LATENCY",
       "sharingMode": "AAUDIO_SHARING_MODE_EXCLUSIVE",
       "outputPath": "/data/recorded_48k_2ch_16bit.wav",
-      "description": "Raw Recording - 48kHz Stereo Unprocessed"
+      "description": "Unprocessed Recording - 48kHz Stereo 16-bit"
+    },
+    {
+      "inputPreset": "AAUDIO_INPUT_PRESET_VOICE_PERFORMANCE",
+      "sampleRate": 48000,
+      "channelCount": 1,
+      "format": 16,
+      "performanceMode": "AAUDIO_PERFORMANCE_MODE_LOW_LATENCY",
+      "sharingMode": "AAUDIO_SHARING_MODE_EXCLUSIVE",
+      "outputPath": "/data/recorded_48k_1ch_16bit.wav",
+      "description": "Voice Performance - 48kHz Mono 16-bit Exclusive"
+    },
+    {
+      "inputPreset": "AAUDIO_INPUT_PRESET_SYSTEM_ECHO_REFERENCE",
+      "sampleRate": 48000,
+      "channelCount": 2,
+      "format": 16,
+      "performanceMode": "AAUDIO_PERFORMANCE_MODE_LOW_LATENCY",
+      "sharingMode": "AAUDIO_SHARING_MODE_EXCLUSIVE",
+      "outputPath": "/data/recorded_48k_2ch_16bit.wav",
+      "description": "Echo Reference - 48kHz Stereo 16-bit for AEC"
+    },
+    {
+      "inputPreset": "AAUDIO_INPUT_PRESET_SYSTEM_HOTWORD",
+      "sampleRate": 16000,
+      "channelCount": 1,
+      "format": 16,
+      "performanceMode": "AAUDIO_PERFORMANCE_MODE_POWER_SAVING",
+      "sharingMode": "AAUDIO_SHARING_MODE_SHARED",
+      "outputPath": "/data/recorded_16k_1ch_16bit.wav",
+      "description": "Hotword Detection - 16kHz Mono 16-bit Low Power"
     }
   ]
 }

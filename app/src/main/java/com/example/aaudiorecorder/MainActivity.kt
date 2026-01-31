@@ -63,9 +63,7 @@ class MainActivity : AppCompatActivity() {
         stopButton.setOnClickListener { stopRecording() }
         configButton.setOnClickListener { showConfigDialog() }
         
-        // Initial state
-        recordButton.isEnabled = true
-        stopButton.isEnabled = false
+        updateButtonStates(false)
         statusText.text = "Ready to record"
     }
     
@@ -75,9 +73,7 @@ class MainActivity : AppCompatActivity() {
             @SuppressLint("SetTextI18n")
             override fun onRecordingStarted() {
                 runOnUiThread {
-                    recordButton.isEnabled = false
-                    stopButton.isEnabled = true
-                    configButton.isEnabled = false
+                    updateButtonStates(true)
                     statusText.text = "Recording..."
                     updateRecordingInfo()
                 }
@@ -86,9 +82,7 @@ class MainActivity : AppCompatActivity() {
             @SuppressLint("SetTextI18n")
             override fun onRecordingStopped() {
                 runOnUiThread {
-                    recordButton.isEnabled = true
-                    stopButton.isEnabled = false
-                    configButton.isEnabled = true
+                    updateButtonStates(false)
                     statusText.text = "Recording stopped"
                     updateRecordingInfo()
                 }
@@ -97,14 +91,18 @@ class MainActivity : AppCompatActivity() {
             @SuppressLint("SetTextI18n")
             override fun onRecordingError(error: String) {
                 runOnUiThread {
-                    recordButton.isEnabled = true
-                    stopButton.isEnabled = false
-                    configButton.isEnabled = true
+                    updateButtonStates(false)
                     statusText.text = "Error: $error"
                     Toast.makeText(this@MainActivity, error, Toast.LENGTH_SHORT).show()
                 }
             }
         })
+    }
+
+    private fun updateButtonStates(isActive: Boolean) {
+        recordButton.isEnabled = !isActive
+        stopButton.isEnabled = isActive
+        configButton.isEnabled = !isActive
     }
     
     @SuppressLint("SetTextI18n")
@@ -118,11 +116,10 @@ class MainActivity : AppCompatActivity() {
         
         if (availableConfigs.isNotEmpty()) {
             currentConfig = availableConfigs[0]
-            audioRecorder.setConfig(currentConfig!!)
+            audioRecorder.setAudioConfig(currentConfig!!)
             updateRecordingInfo()
-            Log.i(TAG, "Loaded ${availableConfigs.size} recording configurations")
+            Log.i(TAG, "Loaded ${availableConfigs.size} configurations")
         } else {
-            Log.e(TAG, "Failed to load recording configurations")
             statusText.text = "Configuration load failed"
             recordButton.isEnabled = false
             configButton.isEnabled = false
@@ -130,45 +127,23 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun checkPermissions() {
-        if (!hasRecordPermissions()) {
-            requestRecordPermissions()
-        } else {
-            onPermissionsGranted()
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.RECORD_AUDIO), PERMISSION_REQUEST_CODE)
         }
     }
     
-    private fun hasRecordPermissions(): Boolean {
-        return ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
-    }
-    
-    private fun requestRecordPermissions() {
-        ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.RECORD_AUDIO), PERMISSION_REQUEST_CODE)
-    }
-    
     @SuppressLint("SetTextI18n")
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray
-    ) {
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         
         if (requestCode == PERMISSION_REQUEST_CODE) {
-            val allGranted = grantResults.all { it == PackageManager.PERMISSION_GRANTED }
-            
-            if (allGranted) {
-                onPermissionsGranted()
+            if (grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
+                Log.i(TAG, "Permissions granted")
             } else {
                 Toast.makeText(this, "Recording permission required to use this app", Toast.LENGTH_LONG).show()
                 statusText.text = "Permission denied"
             }
         }
-    }
-    
-    @SuppressLint("SetTextI18n")
-    private fun onPermissionsGranted() {
-        statusText.text = "Ready to record"
-        Log.i(TAG, "All permissions granted")
     }
     
     @SuppressLint("SetTextI18n")
@@ -178,15 +153,8 @@ class MainActivity : AppCompatActivity() {
             return
         }
         
-        if (!hasRecordPermissions()) {
-            requestRecordPermissions()
-            return
-        }
-        
         statusText.text = "Preparing to record..."
-        if (audioRecorder.startRecording()) {
-            Log.i(TAG, "Recording started")
-        }
+        audioRecorder.startRecording()
     }
     
     @SuppressLint("SetTextI18n")
@@ -197,15 +165,13 @@ class MainActivity : AppCompatActivity() {
         }
         
         statusText.text = "Stopping..."
-        if (audioRecorder.stopRecording()) {
-            Log.i(TAG, "Recording stopped")
-        }
+        audioRecorder.stopRecording()
     }
     
     @SuppressLint("SetTextI18n")
     private fun showConfigDialog() {
         if (availableConfigs.isEmpty()) {
-            Toast.makeText(this, "No available recording configurations", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "No available configurations", Toast.LENGTH_SHORT).show()
             return
         }
         
@@ -213,15 +179,12 @@ class MainActivity : AppCompatActivity() {
         val currentIndex = availableConfigs.indexOf(currentConfig)
         
         AlertDialog.Builder(this)
-            .setTitle("Select Recording Configuration")
+            .setTitle("Select Configuration")
             .setSingleChoiceItems(configNames, currentIndex) { dialog, which ->
                 currentConfig = availableConfigs[which]
-                audioRecorder.setConfig(currentConfig!!)
+                audioRecorder.setAudioConfig(currentConfig!!)
                 updateRecordingInfo()
-                
                 Toast.makeText(this, "Switched to: ${currentConfig!!.description}", Toast.LENGTH_SHORT).show()
-                Log.i(TAG, "Config changed to: ${currentConfig!!.description}")
-                
                 dialog.dismiss()
             }
             .setNegativeButton("Cancel", null)
@@ -244,6 +207,5 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         audioRecorder.release()
-        Log.i(TAG, "MainActivity destroyed")
     }
 }
