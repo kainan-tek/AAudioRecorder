@@ -6,7 +6,11 @@ import android.app.AlertDialog
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.util.Log
+import android.view.View
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
 import android.widget.Button
+import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -21,7 +25,7 @@ import com.example.aaudiorecorder.recorder.AAudioRecorder
  * Usage Instructions:
  * 1. Ensure device supports AAudio API (Android 8.1+)
  * 2. Grant recording permissions
- * 3. Select recording configuration
+ * 3. Select recording configuration from dropdown
  * 4. Start recording
  */
 class MainActivity : AppCompatActivity() {
@@ -29,12 +33,13 @@ class MainActivity : AppCompatActivity() {
     private lateinit var audioRecorder: AAudioRecorder
     private lateinit var recordButton: Button
     private lateinit var stopButton: Button
-    private lateinit var configButton: Button
+    private lateinit var configSpinner: Spinner
     private lateinit var statusText: TextView
     private lateinit var recordingInfoText: TextView
     
     private var availableConfigs: List<AAudioConfig> = emptyList()
     private var currentConfig: AAudioConfig? = null
+    private var isSpinnerInitialized = false
 
     companion object {
         private const val TAG = "MainActivity"
@@ -43,28 +48,36 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Hide title bar
+        supportActionBar?.hide()
         setContentView(R.layout.activity_main)
         
-        initializeViews()
+        initViews()
         initializeAudioRecorder()
         loadConfigurations()
-        checkPermissions()
+        if (!hasAudioPermission()) requestAudioPermission()
     }
-    
-    @SuppressLint("SetTextI18n")
-    private fun initializeViews() {
+
+    private fun initViews() {
         recordButton = findViewById(R.id.recordButton)
         stopButton = findViewById(R.id.stopButton)
-        configButton = findViewById(R.id.configButton)
+        configSpinner = findViewById(R.id.configSpinner)
         statusText = findViewById(R.id.statusTextView)
         recordingInfoText = findViewById(R.id.recordingInfoTextView)
         
-        recordButton.setOnClickListener { startRecording() }
-        stopButton.setOnClickListener { stopRecording() }
-        configButton.setOnClickListener { showConfigDialog() }
+        recordButton.setOnClickListener {
+            if (!hasAudioPermission()) {
+                requestAudioPermission()
+                return@setOnClickListener
+            }
+            startRecording()
+        }
+        
+        stopButton.setOnClickListener {
+            stopRecording()
+        }
         
         updateButtonStates(false)
-        statusText.text = "Ready to record"
     }
     
     private fun initializeAudioRecorder() {
@@ -93,7 +106,7 @@ class MainActivity : AppCompatActivity() {
                 runOnUiThread {
                     updateButtonStates(false)
                     statusText.text = "Error: $error"
-                    Toast.makeText(this@MainActivity, error, Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@MainActivity, "Recording error: $error", Toast.LENGTH_SHORT).show()
                 }
             }
         })
@@ -102,7 +115,7 @@ class MainActivity : AppCompatActivity() {
     private fun updateButtonStates(isActive: Boolean) {
         recordButton.isEnabled = !isActive
         stopButton.isEnabled = isActive
-        configButton.isEnabled = !isActive
+        configSpinner.isEnabled = !isActive
     }
     
     @SuppressLint("SetTextI18n")
@@ -117,39 +130,130 @@ class MainActivity : AppCompatActivity() {
         if (availableConfigs.isNotEmpty()) {
             currentConfig = availableConfigs[0]
             audioRecorder.setAudioConfig(currentConfig!!)
+            setupConfigSpinner()
             updateRecordingInfo()
+            statusText.text = "Ready to record"
             Log.i(TAG, "Loaded ${availableConfigs.size} configurations")
         } else {
             statusText.text = "Configuration load failed"
             recordButton.isEnabled = false
-            configButton.isEnabled = false
         }
     }
     
-    private fun checkPermissions() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+    /**
+     * Setup configuration spinner
+     */
+    private fun setupConfigSpinner() {
+        val configs = availableConfigs
+        Log.d(TAG, "Setting up config spinner with ${configs.size} configurations")
+        
+        if (configs.isEmpty()) {
+            Log.w(TAG, "No configurations available for spinner")
+            return
+        }
+        
+        val configNames = configs.map { it.description }
+        Log.d(TAG, "Config names: $configNames")
+        
+        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, configNames)
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        configSpinner.adapter = adapter
+        
+        // Set initial selection
+        currentConfig?.let {
+            val index = configs.indexOfFirst { config -> config.description == it.description }
+            if (index >= 0) {
+                configSpinner.setSelection(index)
+                Log.d(TAG, "Set initial spinner selection to index $index: ${it.description}")
+            }
+        }
+        
+        configSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                if (!isSpinnerInitialized) {
+                    isSpinnerInitialized = true
+                    Log.d(TAG, "Spinner initialized, skipping first selection")
+                    return
+                }
+                
+                val selectedConfig = configs[position]
+                Log.d(TAG, "Config selected: ${selectedConfig.description}")
+                currentConfig = selectedConfig
+                audioRecorder.setAudioConfig(selectedConfig)
+                updateRecordingInfo()
+                showToast("Switched to: ${selectedConfig.description}")
+            }
+            
+            override fun onNothingSelected(parent: AdapterView<*>?) {
+                Log.d(TAG, "Nothing selected in spinner")
+            }
+        }
+        
+        // Add long press listener to reload configurations
+        configSpinner.setOnLongClickListener {
+            Log.d(TAG, "Long press detected on spinner")
+            reloadConfigurations()
+            true
+        }
+    }
+    
+    /**
+     * Reload configuration file
+     */
+    private fun reloadConfigurations() {
+        try {
+            loadConfigurations()
+            showToast("Configuration reloaded successfully")
+            // Refresh spinner after reload
+            isSpinnerInitialized = false
+            setupConfigSpinner()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to reload configurations", e)
+            showToast("Configuration reload failed: ${e.message}")
+        }
+    }
+    
+    private fun hasAudioPermission(): Boolean {
+        return ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+    }
+    
+    private fun requestAudioPermission() {
+        if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.RECORD_AUDIO)) {
+            // Show explanation dialog
+            AlertDialog.Builder(this)
+                .setTitle("Permission Required")
+                .setMessage("This app needs microphone access permission to record audio.")
+                .setPositiveButton("Grant") { _, _ ->
+                    ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.RECORD_AUDIO), PERMISSION_REQUEST_CODE)
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
+        } else {
             ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.RECORD_AUDIO), PERMISSION_REQUEST_CODE)
         }
     }
     
-    @SuppressLint("SetTextI18n")
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         
-        if (requestCode == PERMISSION_REQUEST_CODE) {
-            if (grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
-                Log.i(TAG, "Permissions granted")
+        if (requestCode == PERMISSION_REQUEST_CODE && grantResults.isNotEmpty()) {
+            val message = if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                "Permission granted"
             } else {
-                Toast.makeText(this, "Recording permission required to use this app", Toast.LENGTH_LONG).show()
-                statusText.text = "Permission denied"
+                "Recording permission required to use this app"
             }
+            showToast(message)
         }
     }
     
     @SuppressLint("SetTextI18n")
     private fun startRecording() {
         if (audioRecorder.isRecording()) {
-            Toast.makeText(this, "Already recording", Toast.LENGTH_SHORT).show()
+            showToast("Already recording")
             return
         }
         
@@ -160,35 +264,12 @@ class MainActivity : AppCompatActivity() {
     @SuppressLint("SetTextI18n")
     private fun stopRecording() {
         if (!audioRecorder.isRecording()) {
-            Toast.makeText(this, "Not currently recording", Toast.LENGTH_SHORT).show()
+            showToast("Not currently recording")
             return
         }
         
         statusText.text = "Stopping..."
         audioRecorder.stopRecording()
-    }
-    
-    @SuppressLint("SetTextI18n")
-    private fun showConfigDialog() {
-        if (availableConfigs.isEmpty()) {
-            Toast.makeText(this, "No available configurations", Toast.LENGTH_SHORT).show()
-            return
-        }
-        
-        val configNames = availableConfigs.map { it.description }.toTypedArray()
-        val currentIndex = availableConfigs.indexOf(currentConfig)
-        
-        AlertDialog.Builder(this)
-            .setTitle("Select Configuration")
-            .setSingleChoiceItems(configNames, currentIndex) { dialog, which ->
-                currentConfig = availableConfigs[which]
-                audioRecorder.setAudioConfig(currentConfig!!)
-                updateRecordingInfo()
-                Toast.makeText(this, "Switched to: ${currentConfig!!.description}", Toast.LENGTH_SHORT).show()
-                dialog.dismiss()
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
     }
     
     @SuppressLint("SetTextI18n")
@@ -200,12 +281,30 @@ class MainActivity : AppCompatActivity() {
                     "File: ${config.outputPath}"
             recordingInfoText.text = configInfo
         } ?: run {
-            recordingInfoText.text = "Recording Info"
+            recordingInfoText.text = "Recording Information"
         }
+    }
+    
+    private fun showToast(message: String) {
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
     }
     
     override fun onDestroy() {
         super.onDestroy()
-        audioRecorder.release()
+        try {
+            audioRecorder.release()
+            Log.d(TAG, "AAudioRecorder resources released successfully")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error releasing AAudioRecorder resources", e)
+        }
+    }
+    
+    override fun onPause() {
+        super.onPause()
+        // Stop recording when app goes to background
+        if (audioRecorder.isRecording()) {
+            audioRecorder.stopRecording()
+            Log.d(TAG, "Recording stopped due to app going to background")
+        }
     }
 }
