@@ -277,9 +277,9 @@ adb logcat -s AAudioRecorder MainActivity
 
 ## 🔗 相关项目
 
-- [AAudioPlayer](../AAudioPlayer/) - 配套的AAudio播放器项目
-- [AudioPlayer](../AudioPlayer/) - 基础音频播放器项目
-- [AudioRecorder](../AudioRecorder/) - 基础音频录制器项目
+- [**AAudioPlayer**](https://github.com/kainan-tek/AAudioPlayer) - 配套的AAudio播放器项目
+- [**AudioPlayer**](https://github.com/kainan-tek/AudioPlayer) - 基础音频播放器项目
+- [**AudioRecorder**](https://github.com/kainan-tek/AudioRecorder) - 基础音频录制器项目
 
 ## 📄 许可证
 
