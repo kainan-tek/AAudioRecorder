@@ -21,7 +21,6 @@ object AAudioConstants {
     // Configuration file paths
     const val CONFIG_FILE_PATH = "/data/aaudio_recorder_configs.json"
     const val ASSETS_CONFIG_FILE = "aaudio_recorder_configs.json"
-    
     // Default audio file paths
     const val DEFAULT_RECORD_FILE = "/data/recorded_48k_1ch_16bit.wav"
     

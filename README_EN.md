@@ -1,0 +1,290 @@
+# AAudio Recorder
+
+[中文文档](README.md) | English
+
+A high-performance audio recording test application based on Android AAudio API, supporting 8 recording configurations and real-time WAV file writing.
+
+## 📋 Overview
+
+AAudio Recorder is an audio recording test tool designed for the Android platform, using Google's AAudio low-latency audio API. This project demonstrates how to implement high-quality audio recording in Android applications, supporting various recording scenarios and performance modes.
+
+## ✨ Key Features
+
+- **🎙️ High-Performance Recording**: Low-latency recording based on AAudio API (~10-40ms)
+- **🔧 8 Recording Presets**: Covering general, voice, camcorder, high-performance recording scenarios
+- **📱 Modern UI**: Intuitive control interface with Material Design style
+- **🎵 Multi-Format Support**: PCM 16-bit, 24-bit, and float formats
+- **⚡ Real-time Processing**: Audio data written to WAV file in real-time, supports continuous recording
+- **🛠️ Dynamic Configuration**: Runtime switching of recording configurations, JSON config file support
+- **📝 Smart Naming**: Auto-generated recording filenames with timestamps
+- **🏗️ Optimized Architecture**: Clear code structure and modular design
+
+## 🏗️ Technical Architecture
+
+### Core Components
+
+- **AAudioRecorder**: Kotlin-written audio recorder wrapper class with permission management
+- **AAudioConfig**: Recording configuration management class with dynamic config loading
+- **MainActivity**: Modern main interface controller with permission management and user interaction
+- **WavFileWriter**: C++ implemented WAV file writer supporting real-time writing
+- **Native Engine**: C++ implemented AAudio recording engine
+
+### Technology Stack
+
+- **Language**: Kotlin + C++
+- **Audio API**: Android AAudio
+- **Build System**: Gradle + CMake
+- **Minimum Version**: Android 12L (API 32)
+- **Target Version**: Android 15 (API 36)
+- **NDK Version**: 29.0.14206865
+- **Java Version**: Java 21
+
+## 🎙️ Supported Recording Scenarios
+
+### 8 Preset Configurations
+
+1. **Generic Recording** - Standard recording scenario (48kHz mono, low latency)
+2. **Camcorder Recording** - Video recording audio (48kHz stereo, power saving)
+3. **Voice Recognition** - Voice recognition optimized (16kHz mono, low latency)
+4. **Voice Communication** - Voice communication optimized (16kHz mono, low latency)
+5. **Unprocessed Recording** - Raw recording without processing (48kHz stereo, 24-bit, exclusive mode)
+6. **Voice Performance** - Professional voice recording (48kHz mono, exclusive mode)
+7. **Echo Reference** - Echo reference for AEC (48kHz stereo, exclusive mode)
+8. **Hotword Detection** - Low-power hotword detection (16kHz mono, power saving)
+
+## 🚀 Quick Start
+
+### System Requirements
+
+- Android 12L (API 32) or higher
+- Device with AAudio support
+- Development Environment: Android Studio
+
+### Permission Requirements
+
+- `RECORD_AUDIO`: Recording permission (required for core functionality)
+- `READ_MEDIA_AUDIO` (API 33+): Read audio files
+- `READ_EXTERNAL_STORAGE` (API ≤32): Read external storage
+
+### Installation Steps
+
+1. **Clone Project**
+   ```bash
+   git clone https://github.com/kainan-tek/AAudioRecorder.git
+   cd AAudioRecorder
+   ```
+
+2. **Build and Install**
+   ```bash
+   ./gradlew assembleDebug
+   adb install app/build/outputs/apk/debug/app-debug.apk
+   ```
+
+3. **Grant Permissions**
+   ```bash
+   adb shell pm grant com.example.aaudiorecorder android.permission.RECORD_AUDIO
+   ```
+
+## 📖 Usage Guide
+
+### Basic Operations
+
+1. **Recording Control**
+   - 🎙️ **Start Recording**: Tap the green recording button
+   - ⏹️ **Stop Recording**: Tap the red stop button
+   - ⚙️ **Recording Config**: Tap config button to switch recording settings
+
+2. **Configuration Management**
+   - Auto-load configurations on app startup
+   - Support dynamic loading from external files
+   - Switch between different recording scenarios via dropdown menu at runtime
+   - Long-press config dropdown to reload external config file
+
+### UI Features
+
+- **Status Display**: Real-time display of recording status and audio parameters
+- **Config Selection**: Select different recording configurations via dropdown menu
+- **Permission Management**: Auto-check and request necessary permissions
+- **Config Reload**: Long-press dropdown menu to reload external config file
+
+## 🔧 Configuration File
+
+### Configuration Location
+
+- **External Config**: `/data/aaudio_recorder_configs.json` (priority)
+- **Built-in Config**: `app/src/main/assets/aaudio_recorder_configs.json`
+
+### Configuration Format
+
+```json
+{
+  "configs": [
+    {
+      "inputPreset": "AAUDIO_INPUT_PRESET_GENERIC",
+      "sampleRate": 48000,
+      "channelCount": 1,
+      "format": 16,
+      "performanceMode": "AAUDIO_PERFORMANCE_MODE_LOW_LATENCY",
+      "sharingMode": "AAUDIO_SHARING_MODE_SHARED",
+      "outputPath": "/data/recorded_48k_1ch_16bit.wav",
+      "description": "Standard recording configuration"
+    }
+  ]
+}
+```
+
+### Supported Constant Values
+
+**Input Preset:**
+- `AAUDIO_INPUT_PRESET_GENERIC` - Generic recording
+- `AAUDIO_INPUT_PRESET_CAMCORDER` - Camcorder recording
+- `AAUDIO_INPUT_PRESET_VOICE_RECOGNITION` - Voice recognition
+- `AAUDIO_INPUT_PRESET_VOICE_COMMUNICATION` - Voice communication
+- `AAUDIO_INPUT_PRESET_UNPROCESSED` - Unprocessed recording
+- `AAUDIO_INPUT_PRESET_VOICE_PERFORMANCE` - Voice performance
+- `AAUDIO_INPUT_PRESET_SYSTEM_ECHO_REFERENCE` - Echo reference
+- `AAUDIO_INPUT_PRESET_SYSTEM_HOTWORD` - Hotword detection
+
+**Format:**
+- `16` - 16-bit integer (AAUDIO_FORMAT_PCM_I16)
+- `24` - 24-bit integer (AAUDIO_FORMAT_PCM_I24_PACKED)
+- `32` - 32-bit integer (AAUDIO_FORMAT_PCM_I32)
+- `FLOAT` - 32-bit float (AAUDIO_FORMAT_PCM_FLOAT)
+
+**Performance Mode:**
+- `AAUDIO_PERFORMANCE_MODE_LOW_LATENCY` - Low latency mode
+- `AAUDIO_PERFORMANCE_MODE_POWER_SAVING` - Power saving mode
+
+**Sharing Mode:**
+- `AAUDIO_SHARING_MODE_EXCLUSIVE` - Exclusive mode
+- `AAUDIO_SHARING_MODE_SHARED` - Shared mode
+
+## 📝 Smart File Naming
+
+### Auto-Naming Rules
+
+When `outputPath` in configuration is empty, the system auto-generates filename:
+
+```
+rec_YYYYMMDD_HHMMSS_mmm_[sampleRate]k_[channels]_[bitDepth]bit.wav
+```
+
+**Example Filenames:**
+- `rec_20240124_143052_123_48k_mono_16bit.wav`
+- `rec_20240124_143052_456_16k_mono_16bit.wav`
+- `rec_20240124_143052_789_48k_stereo_24bit.wav`
+
+### File Path Rules
+
+- **Specified Path**: Use `outputPath` from configuration
+- **Auto Path**: Save to `/data/` directory
+- **Permission Requirement**: Ensure app has write permission
+
+## 🔍 Technical Details
+
+### AAudio Integration
+
+- Callback mode for low-latency recording
+- Multiple audio format support (16/24-bit PCM and float)
+- Complete error handling mechanism
+- Real-time WAV file writing
+
+### Data Flow Architecture
+
+```
+Microphone → AAudio Stream → Audio Callback → WavFileWriter → WAV File
+                                  ↓
+                             JNI Callback → Kotlin UI Update
+```
+
+### WAV File Writing
+
+- **Real-time Writing**: Continuous audio data writing during recording
+- **Format Support**: Standard RIFF/WAVE format
+- **Multi-channel Support**: 1-16 channel recording
+- **Sample Rate Range**: 8kHz - 192kHz
+- **Bit Depth Support**: 8/16/24/32-bit and float
+
+## 📚 API Reference
+
+### AAudioRecorder Class
+```kotlin
+class AAudioRecorder {
+    fun setConfig(config: AAudioConfig)                 // Set configuration
+    fun startRecording(): Boolean                       // Start recording
+    fun stopRecording(): Boolean                        // Stop recording
+    fun isRecording(): Boolean                          // Check recording status
+    fun setRecordingListener(listener: RecordingListener?) // Set listener
+}
+```
+
+### AAudioConfig Class
+```kotlin
+data class AAudioConfig(
+    val inputPreset: String,                    // Input preset
+    val sampleRate: Int,                        // Sample rate
+    val channelCount: Int,                      // Channel count
+    val format: Any,                            // Audio format
+    val performanceMode: String,                // Performance mode
+    val sharingMode: String,                    // Sharing mode
+    val outputPath: String,                     // Output path
+    val description: String                     // Config description
+)
+```
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+1. **Recording Failure**
+   - Confirm recording permission granted
+   - Check device microphone functionality
+   - Verify configuration parameters
+
+2. **Permission Issues**
+   - Manually grant recording permission
+   - Use `adb shell setenforce 0` to temporarily disable SELinux
+   - Check storage permissions
+
+3. **Config Loading Failure**
+   - Check JSON format correctness
+   - Verify config file path
+   - View log output
+
+4. **File Write Failure**
+   - Ensure output directory exists
+   - Check write permissions
+   - Verify disk space
+
+### Debug Information
+```bash
+adb logcat -s AAudioRecorder MainActivity
+```
+
+### Log Tags
+- `AAudioRecorder`: Recorder related logs
+- `MainActivity`: Main interface related logs
+- `AAudioConfig`: Configuration related logs
+
+## 📊 Performance Metrics
+
+- **Low Latency Mode**: ~10-40ms
+- **Power Saving Mode**: ~80-120ms
+- **Sample Rate**: 8kHz - 192kHz
+- **Channel Count**: 1-16 channels
+- **Bit Depth**: 8/16/24/32-bit and float
+- **Supported Format**: PCM WAV file
+
+## 🔗 Related Projects
+
+- [AAudioPlayer](../AAudioPlayer/) - Companion AAudio player project
+- [AudioPlayer](../AudioPlayer/) - Basic audio player project
+- [AudioRecorder](../AudioRecorder/) - Basic audio recorder project
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+**Note**: This project is for learning and testing purposes only. Please ensure use in appropriate devices and environments, and comply with relevant recording laws and regulations.

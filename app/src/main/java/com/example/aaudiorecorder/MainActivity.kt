@@ -87,7 +87,7 @@ class MainActivity : AppCompatActivity() {
             override fun onRecordingStarted() {
                 runOnUiThread {
                     updateButtonStates(true)
-                    statusText.text = "Recording..."
+                    statusText.text = "Recording in progress"
                     updateRecordingInfo()
                 }
             }
@@ -106,7 +106,7 @@ class MainActivity : AppCompatActivity() {
                 runOnUiThread {
                     updateButtonStates(false)
                     statusText.text = "Error: $error"
-                    Toast.makeText(this@MainActivity, "Recording error: $error", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@MainActivity, "Error: $error", Toast.LENGTH_SHORT).show()
                 }
             }
         })
@@ -133,9 +133,9 @@ class MainActivity : AppCompatActivity() {
             setupConfigSpinner()
             updateRecordingInfo()
             statusText.text = "Ready to record"
-            Log.i(TAG, "Loaded ${availableConfigs.size} configurations")
+            Log.i(TAG, "Loaded ${availableConfigs.size} recording configurations")
         } else {
-            statusText.text = "Configuration load failed"
+            statusText.text = "Recording configuration load failed"
             recordButton.isEnabled = false
         }
     }
@@ -145,15 +145,15 @@ class MainActivity : AppCompatActivity() {
      */
     private fun setupConfigSpinner() {
         val configs = availableConfigs
-        Log.d(TAG, "Setting up config spinner with ${configs.size} configurations")
+        Log.d(TAG, "Setting up recording config spinner with ${configs.size} configurations")
         
         if (configs.isEmpty()) {
-            Log.w(TAG, "No configurations available for spinner")
+            Log.w(TAG, "No recording configurations available for spinner")
             return
         }
         
         val configNames = configs.map { it.description }
-        Log.d(TAG, "Config names: $configNames")
+            Log.d(TAG, "Recording config names: $configNames")
         
         val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, configNames)
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
@@ -164,7 +164,7 @@ class MainActivity : AppCompatActivity() {
             val index = configs.indexOfFirst { config -> config.description == it.description }
             if (index >= 0) {
                 configSpinner.setSelection(index)
-                Log.d(TAG, "Set initial spinner selection to index $index: ${it.description}")
+                Log.d(TAG, "Set initial recording spinner selection to index $index: ${it.description}")
             }
         }
         
@@ -172,26 +172,26 @@ class MainActivity : AppCompatActivity() {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
                 if (!isSpinnerInitialized) {
                     isSpinnerInitialized = true
-                    Log.d(TAG, "Spinner initialized, skipping first selection")
+                    Log.d(TAG, "Recording spinner initialized, skipping first selection")
                     return
                 }
                 
                 val selectedConfig = configs[position]
-                Log.d(TAG, "Config selected: ${selectedConfig.description}")
+                Log.d(TAG, "Recording config selected: ${selectedConfig.description}")
                 currentConfig = selectedConfig
                 audioRecorder.setAudioConfig(selectedConfig)
                 updateRecordingInfo()
-                showToast("Switched to: ${selectedConfig.description}")
+                showToast("Switched to recording config: ${selectedConfig.description}")
             }
             
             override fun onNothingSelected(parent: AdapterView<*>?) {
-                Log.d(TAG, "Nothing selected in spinner")
+                Log.d(TAG, "Nothing selected in recording spinner")
             }
         }
         
         // Add long press listener to reload configurations
         configSpinner.setOnLongClickListener {
-            Log.d(TAG, "Long press detected on spinner")
+            Log.d(TAG, "Long press detected on recording spinner")
             reloadConfigurations()
             true
         }

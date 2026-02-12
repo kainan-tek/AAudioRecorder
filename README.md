@@ -1,5 +1,7 @@
 # AAudio Recorder
 
+中文 | [English](README_EN.md)
+
 一个基于Android AAudio API的高性能音频录制器测试程序，支持8种录音配置和实时WAV文件写入。
 
 ## 📋 项目概述

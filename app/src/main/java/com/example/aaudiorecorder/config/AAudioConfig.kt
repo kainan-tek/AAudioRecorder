@@ -13,7 +13,7 @@ data class AAudioConfig(
     val inputPreset: String = "AAUDIO_INPUT_PRESET_GENERIC",
     val sampleRate: Int = 48000,
     val channelCount: Int = 1,
-    val format: Int = 16, // Use bit depth directly (16, 24, 32)
+    val format: Int = 16, // Use a bit of depth directly (16, 24, 32)
     val performanceMode: String = "AAUDIO_PERFORMANCE_MODE_LOW_LATENCY",
     val sharingMode: String = "AAUDIO_SHARING_MODE_SHARED",
     val outputPath: String = AAudioConstants.DEFAULT_RECORD_FILE,
