@@ -63,8 +63,8 @@ AAudio Recorder is an audio recording test tool designed for the Android platfor
 ### Permission Requirements
 
 - `RECORD_AUDIO`: Recording permission (required for core functionality)
-- `READ_MEDIA_AUDIO` (API 33+): Read audio files
-- `READ_EXTERNAL_STORAGE` (API ≤32): Read external storage
+- `READ_EXTERNAL_STORAGE`: Read external storage permission (Android 12 and below, for reading config files)
+- `WRITE_EXTERNAL_STORAGE`: Write external storage permission (Android 9 and below, for saving recording files)
 
 ### Installation Steps
 

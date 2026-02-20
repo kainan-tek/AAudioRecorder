@@ -99,7 +99,15 @@ JNIEXPORT void JNICALL Java_com_example_aaudiorecorder_recorder_AAudioRecorder_r
 class WavFileWriter {
 public:
     WavFileWriter();
-    ~WavFileWriter();
+    ~WavFileWriter() noexcept;
+
+    // Disable copy and assignment
+    WavFileWriter(const WavFileWriter&) = delete;
+    WavFileWriter& operator=(const WavFileWriter&) = delete;
+
+    // Allow move
+    WavFileWriter(WavFileWriter&&) noexcept = default;
+    WavFileWriter& operator=(WavFileWriter&&) noexcept = default;
 
     // Open WAV file for writing with specified parameters
     bool open(const std::string& filePath, int32_t sampleRate, int32_t channelCount, aaudio_format_t format);
@@ -134,12 +142,12 @@ private:
         [[maybe_unused]] uint32_t subchunk2Size; // numSamples * numChannels * bitsPerSample / 8
     };
 
-    std::string mFilePath;     // File path
-    std::ofstream mFileStream; // File stream
-    int32_t mSampleRate;       // Sample rate
-    int32_t mChannelCount;     // Channel count
-    aaudio_format_t mFormat;   // Audio format
-    uint32_t mDataSize;        // Data size
+    std::string filePath_;     // File path
+    std::ofstream fileStream_; // File stream
+    int32_t sampleRate_;       // Sample rate
+    int32_t channelCount_;     // Channel count
+    aaudio_format_t format_;   // Audio format
+    uint32_t dataSize_;        // Data size
 
     // Write WAV file header
     void writeHeader(uint32_t dataSize);

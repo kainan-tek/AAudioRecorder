@@ -63,8 +63,8 @@ AAudio Recorder是一个专为Android平台设计的音频录制测试工具，�
 ### 权限要求
 
 - `RECORD_AUDIO`: 录音权限 (核心功能必需)
-- `READ_MEDIA_AUDIO` (API 33+): 读取音频文件
-- `READ_EXTERNAL_STORAGE` (API ≤32): 读取外部存储
+- `READ_EXTERNAL_STORAGE`: 读取外部存储权限 (Android 12及以下，用于读取配置文件)
+- `WRITE_EXTERNAL_STORAGE`: 写入外部存储权限 (Android 9及以下，用于保存录音文件)
 
 ### 安装步骤
 

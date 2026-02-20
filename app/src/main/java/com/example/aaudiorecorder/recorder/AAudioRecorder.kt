@@ -98,14 +98,7 @@ class AAudioRecorder {
         
         Log.d(TAG, "Starting recording with config: ${currentConfig.description}")
         
-        val success = startNativeRecording()
-        if (!success) {
-            val error = "Failed to start recording - check permissions and configuration"
-            listener?.onRecordingError(error)
-            Log.e(TAG, error)
-        }
-        
-        return success
+        return startNativeRecording()
     }
     
     fun stopRecording(): Boolean {
@@ -117,14 +110,7 @@ class AAudioRecorder {
         
         Log.d(TAG, "Stopping recording")
         
-        val success = stopNativeRecording()
-        if (!success) {
-            val error = "Failed to stop recording"
-            listener?.onRecordingError(error)
-            Log.e(TAG, error)
-        }
-        
-        return success
+        return stopNativeRecording()
     }
 
     /**

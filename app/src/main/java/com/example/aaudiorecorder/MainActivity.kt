@@ -4,6 +4,7 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.app.AlertDialog
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.View
@@ -105,8 +106,7 @@ class MainActivity : AppCompatActivity() {
             override fun onRecordingError(error: String) {
                 runOnUiThread {
                     updateButtonStates(false)
-                    statusText.text = "Error: $error"
-                    Toast.makeText(this@MainActivity, "Error: $error", Toast.LENGTH_SHORT).show()
+                    handleError(error)
                 }
             }
         })
@@ -213,23 +213,54 @@ class MainActivity : AppCompatActivity() {
         }
     }
     
+    /**
+     * Get required permissions for recording
+     */
+    @SuppressLint("ObsoleteSdkInt")
+    private fun getRequiredPermissions(): Array<String> {
+        return when {
+            Build.VERSION.SDK_INT <= Build.VERSION_CODES.P -> {
+                arrayOf(
+                    Manifest.permission.RECORD_AUDIO,
+                    Manifest.permission.READ_EXTERNAL_STORAGE,
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE
+                )
+            }
+            Build.VERSION.SDK_INT <= Build.VERSION_CODES.S_V2 -> {
+                arrayOf(
+                    Manifest.permission.RECORD_AUDIO,
+                    Manifest.permission.READ_EXTERNAL_STORAGE
+                )
+            }
+            else -> {
+                arrayOf(Manifest.permission.RECORD_AUDIO)
+            }
+        }
+    }
+    
     private fun hasAudioPermission(): Boolean {
-        return ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+        return getRequiredPermissions().all {
+            ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED
+        }
     }
     
     private fun requestAudioPermission() {
-        if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.RECORD_AUDIO)) {
-            // Show explanation dialog
+        val permissions = getRequiredPermissions()
+        val deniedPermissions = permissions.filter {
+            ActivityCompat.shouldShowRequestPermissionRationale(this, it)
+        }
+        
+        if (deniedPermissions.isNotEmpty()) {
             AlertDialog.Builder(this)
                 .setTitle("Permission Required")
-                .setMessage("This app needs microphone access permission to record audio.")
+                .setMessage("This app needs microphone and storage access permissions to record and save audio files.")
                 .setPositiveButton("Grant") { _, _ ->
-                    ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.RECORD_AUDIO), PERMISSION_REQUEST_CODE)
+                    ActivityCompat.requestPermissions(this, permissions, PERMISSION_REQUEST_CODE)
                 }
                 .setNegativeButton("Cancel", null)
                 .show()
         } else {
-            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.RECORD_AUDIO), PERMISSION_REQUEST_CODE)
+            ActivityCompat.requestPermissions(this, permissions, PERMISSION_REQUEST_CODE)
         }
     }
     
@@ -241,10 +272,12 @@ class MainActivity : AppCompatActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         
         if (requestCode == PERMISSION_REQUEST_CODE && grantResults.isNotEmpty()) {
-            val message = if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            val allGranted = grantResults.all { it == PackageManager.PERMISSION_GRANTED }
+            val message = if (allGranted) {
                 "Permission granted"
             } else {
-                "Recording permission required to use this app"
+                val deniedCount = grantResults.count { it != PackageManager.PERMISSION_GRANTED }
+                "Recording permission required ($deniedCount permission(s) denied)"
             }
             showToast(message)
         }
@@ -287,6 +320,58 @@ class MainActivity : AppCompatActivity() {
     
     private fun showToast(message: String) {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+    }
+    
+    /**
+     * Handle audio recording errors with user-friendly messages
+     */
+    @SuppressLint("SetTextI18n")
+    private fun handleError(error: String) {
+        Log.e(TAG, "Audio recording error: $error")
+        
+        val userMessage = getUserFriendlyErrorMessage(error)
+        
+        AlertDialog.Builder(this)
+            .setTitle("Recording Error")
+            .setMessage(userMessage)
+            .setPositiveButton("OK") { dialog, _ ->
+                dialog.dismiss()
+                statusText.setText(R.string.status_ready)
+            }
+            .setCancelable(true)
+            .setOnCancelListener {
+                statusText.setText(R.string.status_ready)
+            }
+            .show()
+        
+        statusText.text = "Error: $userMessage"
+    }
+    
+    /**
+     * Convert technical error message to user-friendly message
+     */
+    private fun getUserFriendlyErrorMessage(error: String): String {
+        return when {
+            error.startsWith("[FILE]", ignoreCase = true) -> 
+                "Unable to create recording file. Please check storage permissions and available space."
+            
+            error.startsWith("[STREAM]", ignoreCase = true) -> 
+                "Audio system initialization failed. Please try again."
+            
+            error.startsWith("[PERMISSION]", ignoreCase = true) -> 
+                "Microphone access permission is required. Please grant the permission in Settings."
+            
+            error.contains("Already recording", ignoreCase = true) -> 
+                "Recording is already in progress."
+            
+            error.contains("Not currently recording", ignoreCase = true) -> 
+                "No recording is in progress."
+            
+            error.contains("Invalid", ignoreCase = true) -> 
+                "Invalid audio configuration. Please select a different configuration."
+            
+            else -> "Recording failed. Please try again."
+        }
     }
     
     override fun onDestroy() {
