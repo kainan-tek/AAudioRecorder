@@ -47,7 +47,7 @@ AAudio Recorder is an audio recording test tool designed for the Android platfor
 2. **Camcorder Recording** - Video recording audio (48kHz stereo, power saving)
 3. **Voice Recognition** - Voice recognition optimized (16kHz mono, low latency)
 4. **Voice Communication** - Voice communication optimized (16kHz mono, low latency)
-5. **Unprocessed Recording** - Raw recording without processing (48kHz stereo, 24-bit, exclusive mode)
+5. **Unprocessed Recording** - Raw recording without processing (48kHz stereo, 16-bit, exclusive mode)
 6. **Voice Performance** - Professional voice recording (48kHz mono, exclusive mode)
 7. **Echo Reference** - Echo reference for AEC (48kHz stereo, exclusive mode)
 8. **Hotword Detection** - Low-power hotword detection (16kHz mono, power saving)
@@ -80,10 +80,11 @@ AAudio Recorder is an audio recording test tool designed for the Android platfor
    adb install app/build/outputs/apk/debug/app-debug.apk
    ```
 
-3. **Grant Permissions**
-   ```bash
-   adb shell pm grant com.example.aaudiorecorder android.permission.RECORD_AUDIO
-   ```
+3. **Run the App**
+   - The app will automatically request recording permissions on first run
+   - Follow the on-screen prompts to grant the required permissions
+
+
 
 ## 📖 Usage Guide
 
@@ -127,7 +128,7 @@ AAudio Recorder is an audio recording test tool designed for the Android platfor
       "performanceMode": "AAUDIO_PERFORMANCE_MODE_LOW_LATENCY",
       "sharingMode": "AAUDIO_SHARING_MODE_SHARED",
       "outputPath": "/data/recorded_48k_1ch_16bit.wav",
-      "description": "Standard recording configuration"
+      "description": "Generic Recording - 48kHz Mono 16-bit"
     }
   ]
 }
@@ -210,7 +211,7 @@ Microphone → AAudio Stream → Audio Callback → WavFileWriter → WAV File
 ### AAudioRecorder Class
 ```kotlin
 class AAudioRecorder {
-    fun setConfig(config: AAudioConfig)                 // Set configuration
+    fun setAudioConfig(config: AAudioConfig)            // Set configuration
     fun startRecording(): Boolean                       // Start recording
     fun stopRecording(): Boolean                        // Stop recording
     fun isRecording(): Boolean                          // Check recording status
@@ -242,7 +243,9 @@ data class AAudioConfig(
    - Verify configuration parameters
 
 2. **Permission Issues**
-   - Manually grant recording permission
+   - The app will automatically request permissions on first run, follow the on-screen prompts
+   - If permissions are denied, manually grant recording permission in system settings
+   - Use `adb shell pm grant com.example.aaudiorecorder android.permission.RECORD_AUDIO` to manually grant permission
    - Use `adb shell setenforce 0` to temporarily disable SELinux
    - Check storage permissions
 

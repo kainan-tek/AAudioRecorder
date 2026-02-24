@@ -47,7 +47,7 @@ AAudio Recorder是一个专为Android平台设计的音频录制测试工具，�
 2. **摄像录音** - 视频录制音频 (48kHz立体声，省电模式)
 3. **语音识别** - 语音识别优化 (16kHz单声道，低延迟)
 4. **语音通话** - 语音通信优化 (16kHz单声道，低延迟)
-5. **原始录音** - 无处理录音 (48kHz立体声，24位，独占模式)
+5. **原始录音** - 无处理录音 (48kHz立体声，16位，独占模式)
 6. **高性能语音** - 专业语音录制 (48kHz单声道，独占模式)
 7. **回声参考** - 用于AEC的回声参考 (48kHz立体声，独占模式)
 8. **热词检测** - 低功耗热词检测 (16kHz单声道，省电模式)
@@ -80,10 +80,11 @@ AAudio Recorder是一个专为Android平台设计的音频录制测试工具，�
    adb install app/build/outputs/apk/debug/app-debug.apk
    ```
 
-3. **授予权限**
-   ```bash
-   adb shell pm grant com.example.aaudiorecorder android.permission.RECORD_AUDIO
-   ```
+3. **运行应用**
+   - 首次运行时，应用会自动请求录音权限
+   - 按照屏幕提示授予所需权限
+
+
 
 ## 📖 使用说明
 
@@ -127,7 +128,7 @@ AAudio Recorder是一个专为Android平台设计的音频录制测试工具，�
       "performanceMode": "AAUDIO_PERFORMANCE_MODE_LOW_LATENCY",
       "sharingMode": "AAUDIO_SHARING_MODE_SHARED",
       "outputPath": "/data/recorded_48k_1ch_16bit.wav",
-      "description": "标准录音配置"
+      "description": "Generic Recording - 48kHz Mono 16-bit"
     }
   ]
 }
@@ -210,7 +211,7 @@ rec_YYYYMMDD_HHMMSS_mmm_[sampleRate]k_[channels]_[bitDepth]bit.wav
 ### AAudioRecorder 类
 ```kotlin
 class AAudioRecorder {
-    fun setConfig(config: AAudioConfig)                 // 设置配置
+    fun setAudioConfig(config: AAudioConfig)            // 设置配置
     fun startRecording(): Boolean                       // 开始录音
     fun stopRecording(): Boolean                        // 停止录音
     fun isRecording(): Boolean                          // 检查录音状态
@@ -242,7 +243,9 @@ data class AAudioConfig(
    - 验证配置参数是否正确
 
 2. **权限问题**
-   - 手动授予录音权限
+   - 应用首次运行时会自动请求权限，按照屏幕提示授予
+   - 如果权限被拒绝，可在系统设置中手动授予录音权限
+   - 使用 `adb shell pm grant com.example.aaudiorecorder android.permission.RECORD_AUDIO` 手动授予权限
    - 使用 `adb shell setenforce 0` 临时禁用SELinux
    - 检查存储权限
 
