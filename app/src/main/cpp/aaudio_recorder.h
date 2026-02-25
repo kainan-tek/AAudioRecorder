@@ -1,17 +1,13 @@
 // AAudio recorder header file
-#ifndef AAUDIO_RECORDER_H
-#define AAUDIO_RECORDER_H
+#ifndef AAUDIO_RECORDER_AAUDIO_RECORDER_H_
+#define AAUDIO_RECORDER_AAUDIO_RECORDER_H_
 
-#include <condition_variable>
 #include <fstream>
-#include <jni.h>
-#include <mutex>
 #include <string>
-#include <thread>
-#include <vector>
 
 #include <aaudio/AAudio.h>
 #include <android/log.h>
+#include <jni.h>
 
 // Log tags
 #define LOG_TAG "AAudioRecorder"
@@ -96,18 +92,18 @@ JNIEXPORT void JNICALL Java_com_example_aaudiorecorder_recorder_AAudioRecorder_r
  * WAV file writing class (for recording)
  * Supports WAV file writing and audio data saving
  */
-class WavFileWriter {
+class WavFile {
 public:
-    WavFileWriter();
-    ~WavFileWriter() noexcept;
+    WavFile();
+    ~WavFile() noexcept;
 
     // Disable copy and assignment
-    WavFileWriter(const WavFileWriter&) = delete;
-    WavFileWriter& operator=(const WavFileWriter&) = delete;
+    WavFile(const WavFile&) = delete;
+    WavFile& operator=(const WavFile&) = delete;
 
     // Allow move
-    WavFileWriter(WavFileWriter&&) noexcept = default;
-    WavFileWriter& operator=(WavFileWriter&&) noexcept = default;
+    WavFile(WavFile&&) noexcept = default;
+    WavFile& operator=(WavFile&&) noexcept = default;
 
     // Open WAV file for writing with specified parameters
     bool open(const std::string& filePath, int32_t sampleRate, int32_t channelCount, aaudio_format_t format);
@@ -126,33 +122,32 @@ public:
 
 private:
     // WAV file header definition
-    struct WAVHeader {
-        char chunkId[4];                         // "RIFF"
-        [[maybe_unused]] uint32_t chunkSize;     // 36 + subchunk2Size
-        char format[4];                          // "WAVE"
-        char subchunk1Id[4];                     // "fmt "
-        [[maybe_unused]] uint32_t subchunk1Size; // 16 for PCM
-        [[maybe_unused]] uint16_t audioFormat;   // 1 for PCM, 3 for IEEE float
-        [[maybe_unused]] uint16_t numChannels;   // >0
-        uint32_t sampleRate;                     // 8000, 44100, etc.
-        [[maybe_unused]] uint32_t byteRate;      // sampleRate * numChannels * bitsPerSample / 8
-        [[maybe_unused]] uint16_t blockAlign;    // numChannels * bitsPerSample / 8
-        [[maybe_unused]] uint16_t bitsPerSample; // 8, 16, 24, 32
-        char subchunk2Id[4];                     // "data"
-        [[maybe_unused]] uint32_t subchunk2Size; // numSamples * numChannels * bitsPerSample / 8
+    struct WavHeader {
+        char chunk_id[4];                          // "RIFF"
+        [[maybe_unused]] uint32_t chunk_size;      // 36 + subchunk2_size
+        char format[4];                            // "WAVE"
+        char subchunk1_id[4];                      // "fmt "
+        [[maybe_unused]] uint32_t subchunk1_size;  // 16 for PCM
+        [[maybe_unused]] uint16_t audio_format;    // 1 for PCM, 3 for IEEE float
+        [[maybe_unused]] uint16_t num_channels;    // >0
+        uint32_t sample_rate;                      // 8000, 44100, etc.
+        [[maybe_unused]] uint32_t byte_rate;       // sample_rate * num_channels * bits_per_sample / 8
+        [[maybe_unused]] uint16_t block_align;     // num_channels * bits_per_sample / 8
+        [[maybe_unused]] uint16_t bits_per_sample; // 8, 16, 24, 32
+        char subchunk2_id[4];                      // "data"
+        [[maybe_unused]] uint32_t subchunk2_size;  // num_samples * num_channels * bits_per_sample / 8
     };
 
-    std::string filePath_;     // File path
-    std::ofstream fileStream_; // File stream
-    int32_t sampleRate_;       // Sample rate
-    int32_t channelCount_;     // Channel count
-    aaudio_format_t format_;   // Audio format
-    uint32_t dataSize_;        // Data size
+    std::string file_path_;     // File path
+    std::ofstream file_stream_; // File stream
+    int32_t sample_rate_;       // Sample rate
+    int32_t channel_count_;     // Channel count
+    aaudio_format_t format_;    // Audio format
+    uint32_t data_size_;        // Data size
 
-    // Write WAV file header
-    void writeHeader(uint32_t dataSize);
+    void writeHeader(uint32_t data_size);
 };
 
 #endif
 
-#endif // AAUDIO_RECORDER_H
+#endif // AAUDIO_RECORDER_AAUDIO_RECORDER_H_

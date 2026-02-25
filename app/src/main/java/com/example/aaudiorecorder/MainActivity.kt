@@ -82,7 +82,7 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun initializeAudioRecorder() {
-        audioRecorder = AAudioRecorder()
+        audioRecorder = AAudioRecorder(this)
         audioRecorder.setRecordingListener(object : AAudioRecorder.RecordingListener {
             @SuppressLint("SetTextI18n")
             override fun onRecordingStarted() {
@@ -308,10 +308,13 @@ class MainActivity : AppCompatActivity() {
     @SuppressLint("SetTextI18n")
     private fun updateRecordingInfo() {
         currentConfig?.let { config ->
+            val filePathDisplay = config.outputPath.ifBlank {
+                "<App default path (auto-generated at recording start)>"
+            }
             val configInfo = "Current Config: ${config.description}\n" +
                     "Source: ${config.inputPreset}\n" +
                     "Mode: ${config.performanceMode} | ${config.sharingMode}\n" +
-                    "File: ${config.outputPath}"
+                    "File: $filePathDisplay"
             recordingInfoText.text = configInfo
         } ?: run {
             recordingInfoText.text = "Recording Information"

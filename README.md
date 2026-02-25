@@ -23,10 +23,10 @@ AAudio Recorder是一个专为Android平台设计的音频录制测试工具，�
 
 ### 核心组件
 
+- **MainActivity**: 现代化主界面控制器，提供权限管理和用户交互
 - **AAudioRecorder**: Kotlin编写的音频录制器封装类，集成权限管理
 - **AAudioConfig**: 录音配置管理类，支持动态加载配置
-- **MainActivity**: 现代化主界面控制器，提供权限管理和用户交互
-- **WavFileWriter**: C++实现的WAV文件写入器，支持实时写入
+- **WavFile**: C++实现的WAV文件写入类，支持实时写入
 - **Native Engine**: C++实现的AAudio录音引擎
 
 ### 技术栈
@@ -164,21 +164,21 @@ AAudio Recorder是一个专为Android平台设计的音频录制测试工具，�
 
 ### 自动命名规则
 
-当配置中的 `outputPath` 为空时，系统会自动生成文件名：
+当配置中的 `outputPath` 为空时，系统会在录音开始时自动生成带时间戳的文件名：
 
 ```
-rec_YYYYMMDD_HHMMSS_mmm_[sampleRate]k_[channels]_[bitDepth]bit.wav
+rec_YYYYMMDD_HHMMSS_mmm_[sampleRate]k_[channels]ch_[bitDepth]bit.wav
 ```
 
 **示例文件名:**
-- `rec_20240124_143052_123_48k_mono_16bit.wav`
-- `rec_20240124_143052_456_16k_mono_16bit.wav`
-- `rec_20240124_143052_789_48k_stereo_24bit.wav`
+- `rec_20240124_143052_123_48k_1ch_16bit.wav`
+- `rec_20240124_143052_456_16k_1ch_16bit.wav`
+- `rec_20240124_143052_789_48k_2ch_24bit.wav`
 
 ### 文件路径规则
 
-- **指定路径**: 使用配置中的 `outputPath`
-- **自动路径**: 保存到 `/data/` 目录下
+- **指定路径**: 使用配置中的 `outputPath` 完整路径
+- **自动路径**: 保存到应用默认存储目录 (`getExternalFilesDir(null)`)
 - **权限要求**: 确保应用有写入权限
 
 ## 🔍 技术细节

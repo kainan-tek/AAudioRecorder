@@ -16,7 +16,7 @@ data class AAudioConfig(
     val format: Int = 16, // Use a bit of depth directly (16, 24, 32)
     val performanceMode: String = "AAUDIO_PERFORMANCE_MODE_LOW_LATENCY",
     val sharingMode: String = "AAUDIO_SHARING_MODE_SHARED",
-    val outputPath: String = AAudioConstants.DEFAULT_RECORD_FILE,
+    val outputPath: String = "",
     val description: String = "Default Recording Configuration"
 ) {
     
@@ -64,7 +64,7 @@ data class AAudioConfig(
                     format = config.optInt("format", 16),
                     performanceMode = config.optString("performanceMode", "AAUDIO_PERFORMANCE_MODE_LOW_LATENCY"),
                     sharingMode = config.optString("sharingMode", "AAUDIO_SHARING_MODE_SHARED"),
-                    outputPath = config.optString("outputPath", AAudioConstants.DEFAULT_RECORD_FILE),
+                    outputPath = config.optString("outputPath", ""),
                     description = config.optString("description", "Recording Configuration")
                 )
             }
@@ -80,8 +80,8 @@ data class AAudioConfig(
                     format = 16,
                     performanceMode = "AAUDIO_PERFORMANCE_MODE_LOW_LATENCY",
                     sharingMode = "AAUDIO_SHARING_MODE_SHARED",
-                    outputPath = AAudioConstants.DEFAULT_RECORD_FILE,
-                    description = "Emergency Fallback - Generic Recording"
+                    outputPath = "",
+                    description = "Emergency Fallback - Mono Recording"
                 )
             )
         }

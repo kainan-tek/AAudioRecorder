@@ -1,5 +1,6 @@
 package com.example.aaudiorecorder.recorder
 
+import android.content.Context
 import android.util.Log
 import com.example.aaudiorecorder.config.AAudioConfig
 import com.example.aaudiorecorder.common.AAudioConstants
@@ -7,7 +8,7 @@ import com.example.aaudiorecorder.common.AAudioConstants
 /**
  * AAudio Recorder - enhanced with better error handling
  */
-class AAudioRecorder {
+class AAudioRecorder(private val context: Context? = null) {
     companion object {
         private const val TAG = "AAudioRecorder"
         
@@ -42,6 +43,10 @@ class AAudioRecorder {
         this.listener = listener
     }
     
+    /**
+     * Set audio configuration
+     * Note: Output path will be generated at recording start if empty
+     */
     fun setAudioConfig(config: AAudioConfig) {
         if (isRecording) {
             Log.w(TAG, "Cannot change config while recording")
@@ -51,7 +56,19 @@ class AAudioRecorder {
         currentConfig = config
         Log.i(TAG, "Configuration updated: ${currentConfig.description}")
         
-        // Apply configuration to native layer
+        // Validate output path (empty is valid, means use default path)
+        if (currentConfig.outputPath.isNotBlank() && !currentConfig.outputPath.endsWith(".wav")) {
+            Log.e(TAG, "Invalid output path: must be empty or end with .wav")
+            return
+        }
+        
+        // If outputPath is empty, pass only the default directory path to native layer,
+        // Native layer will generate timestamped filename at recording start
+        val outputPath = currentConfig.outputPath.ifBlank {
+            getDefaultDirectory()
+        }
+        
+        // Apply configuration to native layer immediately
         setNativeConfig(
             AAudioConstants.getInputPreset(currentConfig.inputPreset),
             currentConfig.sampleRate,
@@ -59,7 +76,7 @@ class AAudioRecorder {
             AAudioConstants.getFormatFromBitDepth(currentConfig.format),
             AAudioConstants.getPerformanceMode(currentConfig.performanceMode),
             AAudioConstants.getSharingMode(currentConfig.sharingMode),
-            currentConfig.outputPath
+            outputPath
         )
     }
 
@@ -88,17 +105,18 @@ class AAudioRecorder {
             return false
         }
         
-        // Validate output path
-        if (currentConfig.outputPath.isNotBlank() && !currentConfig.outputPath.endsWith(".wav")) {
-            val error = "Invalid output path: must be empty or end with .wav"
-            Log.e(TAG, error)
-            listener?.onRecordingError(error)
-            return false
-        }
-        
         Log.d(TAG, "Starting recording with config: ${currentConfig.description}")
         
         return startNativeRecording()
+    }
+    
+    /**
+     * Get default directory path for recording files
+     */
+    private fun getDefaultDirectory(): String {
+        val ctx = context ?: throw IllegalStateException("Context is required for default file path generation")
+        return ctx.getExternalFilesDir(null)?.absolutePath
+            ?: throw IllegalStateException("Failed to get external files directory")
     }
     
     fun stopRecording(): Boolean {

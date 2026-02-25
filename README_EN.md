@@ -23,10 +23,10 @@ AAudio Recorder is an audio recording test tool designed for the Android platfor
 
 ### Core Components
 
+- **MainActivity**: Modern main interface controller with permission management and user interaction
 - **AAudioRecorder**: Kotlin-written audio recorder wrapper class with permission management
 - **AAudioConfig**: Recording configuration management class with dynamic config loading
-- **MainActivity**: Modern main interface controller with permission management and user interaction
-- **WavFileWriter**: C++ implemented WAV file writer supporting real-time writing
+- **WavFile**: C++ implemented WAV file writer class supporting real-time writing
 - **Native Engine**: C++ implemented AAudio recording engine
 
 ### Technology Stack
@@ -164,21 +164,21 @@ AAudio Recorder is an audio recording test tool designed for the Android platfor
 
 ### Auto-Naming Rules
 
-When `outputPath` in configuration is empty, the system auto-generates filename:
+When `outputPath` in configuration is empty, the system auto-generates a timestamped filename at recording start:
 
 ```
-rec_YYYYMMDD_HHMMSS_mmm_[sampleRate]k_[channels]_[bitDepth]bit.wav
+rec_YYYYMMDD_HHMMSS_mmm_[sampleRate]k_[channels]ch_[bitDepth]bit.wav
 ```
 
 **Example Filenames:**
-- `rec_20240124_143052_123_48k_mono_16bit.wav`
-- `rec_20240124_143052_456_16k_mono_16bit.wav`
-- `rec_20240124_143052_789_48k_stereo_24bit.wav`
+- `rec_20240124_143052_123_48k_1ch_16bit.wav`
+- `rec_20240124_143052_456_16k_1ch_16bit.wav`
+- `rec_20240124_143052_789_48k_2ch_24bit.wav`
 
 ### File Path Rules
 
-- **Specified Path**: Use `outputPath` from configuration
-- **Auto Path**: Save to `/data/` directory
+- **Specified Path**: Use the complete `outputPath` from configuration
+- **Auto Path**: Save to app's default storage directory (`getExternalFilesDir(null)`)
 - **Permission Requirement**: Ensure app has write permission
 
 ## 🔍 Technical Details
