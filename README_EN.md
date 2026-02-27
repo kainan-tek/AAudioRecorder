@@ -1,21 +1,27 @@
 # AAudio Recorder
 
-[中文文档](README.md) | English
+[中文](README.md) | English
 
-A high-performance audio recording test application based on Android AAudio API, supporting 8 recording configurations and real-time WAV file writing.
+A high-performance audio recording test application based on Android AAudio API, supporting 8
+recording configurations and real-time WAV file writing.
 
 ## 📋 Overview
 
-AAudio Recorder is an audio recording test tool designed for the Android platform, using Google's AAudio low-latency audio API. This project demonstrates how to implement high-quality audio recording in Android applications, supporting various recording scenarios and performance modes.
+AAudioRecorder is an audio recording test tool designed for the Android platform, using Google's
+AAudio low-latency audio API. This project demonstrates how to implement high-quality audio
+recording in Android applications, supporting various recording scenarios and performance modes.
 
 ## ✨ Key Features
 
 - **🎙️ High-Performance Recording**: Low-latency recording based on AAudio API (~10-40ms)
-- **🔧 8 Recording Presets**: Covering general, voice, camcorder, high-performance recording scenarios
+- **🔧 8 Recording Presets**: Covering general, voice, camcorder, high-performance recording
+  scenarios
 - **📱 Modern UI**: Intuitive control interface with Material Design style
 - **🎵 Multi-Format Support**: PCM 16-bit, 24-bit, and float formats
-- **⚡ Real-time Processing**: Audio data written to WAV file in real-time, supports continuous recording
-- **🛠️ Dynamic Configuration**: Runtime switching of recording configurations, JSON config file support
+- **⚡ Real-time Processing**: Audio data written to WAV file in real-time, supports continuous
+  recording
+- **🛠️ Dynamic Configuration**: Runtime switching of recording configurations, JSON config file
+  support
 - **📝 Smart Naming**: Auto-generated recording filenames with timestamps
 - **🏗️ Optimized Architecture**: Clear code structure and modular design
 
@@ -47,7 +53,8 @@ AAudio Recorder is an audio recording test tool designed for the Android platfor
 2. **Camcorder Recording** - Video recording audio (48kHz stereo, power saving)
 3. **Voice Recognition** - Voice recognition optimized (16kHz mono, low latency)
 4. **Voice Communication** - Voice communication optimized (16kHz mono, low latency)
-5. **Unprocessed Recording** - Raw recording without processing (48kHz stereo, 16-bit, exclusive mode)
+5. **Unprocessed Recording** - Raw recording without processing (48kHz stereo, 16-bit, exclusive
+   mode)
 6. **Voice Performance** - Professional voice recording (48kHz mono, exclusive mode)
 7. **Echo Reference** - Echo reference for AEC (48kHz stereo, exclusive mode)
 8. **Hotword Detection** - Low-power hotword detection (16kHz mono, power saving)
@@ -63,8 +70,10 @@ AAudio Recorder is an audio recording test tool designed for the Android platfor
 ### Permission Requirements
 
 - `RECORD_AUDIO`: Recording permission (required for core functionality)
-- `READ_EXTERNAL_STORAGE`: Read external storage permission (Android 12 and below, for reading config files)
-- `WRITE_EXTERNAL_STORAGE`: Write external storage permission (Android 9 and below, for saving recording files)
+- `READ_EXTERNAL_STORAGE`: Read external storage permission (Android 12 and below, for reading
+  config files)
+- `WRITE_EXTERNAL_STORAGE`: Write external storage permission (Android 9 and below, for saving
+  recording files)
 
 ### Installation Steps
 
@@ -81,25 +90,23 @@ AAudio Recorder is an audio recording test tool designed for the Android platfor
    ```
 
 3. **Run the App**
-   - The app will automatically request recording permissions on first run
-   - Follow the on-screen prompts to grant the required permissions
-
-
+    - The app will automatically request recording permissions on first run
+    - Follow the on-screen prompts to grant the required permissions
 
 ## 📖 Usage Guide
 
 ### Basic Operations
 
 1. **Recording Control**
-   - 🎙️ **Start Recording**: Tap the green recording button
-   - ⏹️ **Stop Recording**: Tap the red stop button
-   - ⚙️ **Recording Config**: Tap config button to switch recording settings
+    - 🎙️ **Start Recording**: Tap the green recording button
+    - ⏹️ **Stop Recording**: Tap the red stop button
+    - ⚙️ **Recording Config**: Tap config button to switch recording settings
 
 2. **Configuration Management**
-   - Auto-load configurations on app startup
-   - Support dynamic loading from external files
-   - Switch between different recording scenarios via dropdown menu at runtime
-   - Long-press config dropdown to reload external config file
+    - Auto-load configurations on app startup
+    - Support dynamic loading from external files
+    - Switch between different recording scenarios via dropdown menu at runtime
+    - Long-press config dropdown to reload external config file
 
 ### UI Features
 
@@ -137,6 +144,7 @@ AAudio Recorder is an audio recording test tool designed for the Android platfor
 ### Supported Constant Values
 
 **Input Preset:**
+
 - `AAUDIO_INPUT_PRESET_GENERIC` - Generic recording
 - `AAUDIO_INPUT_PRESET_CAMCORDER` - Camcorder recording
 - `AAUDIO_INPUT_PRESET_VOICE_RECOGNITION` - Voice recognition
@@ -147,16 +155,19 @@ AAudio Recorder is an audio recording test tool designed for the Android platfor
 - `AAUDIO_INPUT_PRESET_SYSTEM_HOTWORD` - Hotword detection
 
 **Format:**
+
 - `16` - 16-bit integer (AAUDIO_FORMAT_PCM_I16)
 - `24` - 24-bit integer (AAUDIO_FORMAT_PCM_I24_PACKED)
 - `32` - 32-bit integer (AAUDIO_FORMAT_PCM_I32)
 - `FLOAT` - 32-bit float (AAUDIO_FORMAT_PCM_FLOAT)
 
 **Performance Mode:**
+
 - `AAUDIO_PERFORMANCE_MODE_LOW_LATENCY` - Low latency mode
 - `AAUDIO_PERFORMANCE_MODE_POWER_SAVING` - Power saving mode
 
 **Sharing Mode:**
+
 - `AAUDIO_SHARING_MODE_EXCLUSIVE` - Exclusive mode
 - `AAUDIO_SHARING_MODE_SHARED` - Shared mode
 
@@ -164,13 +175,15 @@ AAudio Recorder is an audio recording test tool designed for the Android platfor
 
 ### Auto-Naming Rules
 
-When `outputPath` in configuration is empty, the system auto-generates a timestamped filename at recording start:
+When `outputPath` in configuration is empty, the system auto-generates a timestamped filename at
+recording start:
 
 ```
 rec_YYYYMMDD_HHMMSS_mmm_[sampleRate]k_[channels]ch_[bitDepth]bit.wav
 ```
 
 **Example Filenames:**
+
 - `rec_20240124_143052_123_48k_1ch_16bit.wav`
 - `rec_20240124_143052_456_16k_1ch_16bit.wav`
 - `rec_20240124_143052_789_48k_2ch_24bit.wav`
@@ -209,6 +222,7 @@ Microphone → AAudio Stream → Audio Callback → WavFileWriter → WAV File
 ## 📚 API Reference
 
 ### AAudioRecorder Class
+
 ```kotlin
 class AAudioRecorder {
     fun setAudioConfig(config: AAudioConfig)            // Set configuration
@@ -220,6 +234,7 @@ class AAudioRecorder {
 ```
 
 ### AAudioConfig Class
+
 ```kotlin
 data class AAudioConfig(
     val inputPreset: String,                    // Input preset
@@ -238,33 +253,36 @@ data class AAudioConfig(
 ### Common Issues
 
 1. **Recording Failure**
-   - Confirm recording permission granted
-   - Check device microphone functionality
-   - Verify configuration parameters
+    - Confirm recording permission granted
+    - Check device microphone functionality
+    - Verify configuration parameters
 
 2. **Permission Issues**
-   - The app will automatically request permissions on first run, follow the on-screen prompts
-   - If permissions are denied, manually grant recording permission in system settings
-   - Use `adb shell pm grant com.example.aaudiorecorder android.permission.RECORD_AUDIO` to manually grant permission
-   - Use `adb shell setenforce 0` to temporarily disable SELinux
-   - Check storage permissions
+    - The app will automatically request permissions on first run, follow the on-screen prompts
+    - If permissions are denied, manually grant recording permission in system settings
+    - Use `adb shell pm grant com.example.aaudiorecorder android.permission.RECORD_AUDIO` to
+      manually grant permission
+    - Use `adb shell setenforce 0` to temporarily disable SELinux
+    - Check storage permissions
 
 3. **Config Loading Failure**
-   - Check JSON format correctness
-   - Verify config file path
-   - View log output
+    - Check JSON format correctness
+    - Verify config file path
+    - View log output
 
 4. **File Write Failure**
-   - Ensure output directory exists
-   - Check write permissions
-   - Verify disk space
+    - Ensure output directory exists
+    - Check write permissions
+    - Verify disk space
 
 ### Debug Information
+
 ```bash
 adb logcat -s AAudioRecorder MainActivity
 ```
 
 ### Log Tags
+
 - `AAudioRecorder`: Recorder related logs
 - `MainActivity`: Main interface related logs
 - `AAudioConfig`: Configuration related logs
@@ -290,4 +308,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Note**: This project is for learning and testing purposes only. Please ensure use in appropriate devices and environments, and comply with relevant recording laws and regulations.
+**Note**: This project is for learning and testing purposes only. Please ensure use in appropriate
+devices and environments, and comply with relevant recording laws and regulations.

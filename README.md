@@ -6,7 +6,7 @@
 
 ## 📋 项目概述
 
-AAudio Recorder是一个专为Android平台设计的音频录制测试工具，使用Google的AAudio低延迟音频API。该项目展示了如何在Android应用中实现高质量的音频录制，支持多种录音使用场景和性能模式。
+AAudioRecorder是一个专为Android平台设计的音频录制测试工具，使用Google的AAudio低延迟音频API。该项目展示了如何在Android应用中实现高质量的音频录制，支持多种录音使用场景和性能模式。
 
 ## ✨ 主要特性
 
@@ -81,25 +81,23 @@ AAudio Recorder是一个专为Android平台设计的音频录制测试工具，�
    ```
 
 3. **运行应用**
-   - 首次运行时，应用会自动请求录音权限
-   - 按照屏幕提示授予所需权限
-
-
+    - 首次运行时，应用会自动请求录音权限
+    - 按照屏幕提示授予所需权限
 
 ## 📖 使用说明
 
 ### 基本操作
 
 1. **录音控制**
-   - 🎙️ **开始录音**: 点击绿色录音按钮
-   - ⏹️ **停止录音**: 点击红色停止按钮
-   - ⚙️ **录音配置**: 点击配置按钮切换录音设置
+    - 🎙️ **开始录音**: 点击绿色录音按钮
+    - ⏹️ **停止录音**: 点击红色停止按钮
+    - ⚙️ **录音配置**: 点击配置按钮切换录音设置
 
 2. **配置管理**
-   - 应用启动时自动加载配置
-   - 支持从外部文件动态加载配置
-   - 可在运行时通过下拉菜单切换不同的录音场景
-   - 长按配置下拉菜单可重新加载外部配置文件
+    - 应用启动时自动加载配置
+    - 支持从外部文件动态加载配置
+    - 可在运行时通过下拉菜单切换不同的录音场景
+    - 长按配置下拉菜单可重新加载外部配置文件
 
 ### 界面功能
 
@@ -137,6 +135,7 @@ AAudio Recorder是一个专为Android平台设计的音频录制测试工具，�
 ### 支持的常量值
 
 **Input Preset (输入预设):**
+
 - `AAUDIO_INPUT_PRESET_GENERIC` - 通用录音
 - `AAUDIO_INPUT_PRESET_CAMCORDER` - 摄像录音
 - `AAUDIO_INPUT_PRESET_VOICE_RECOGNITION` - 语音识别
@@ -147,16 +146,19 @@ AAudio Recorder是一个专为Android平台设计的音频录制测试工具，�
 - `AAUDIO_INPUT_PRESET_SYSTEM_HOTWORD` - 热词检测
 
 **Format (音频格式):**
+
 - `16` - 16位整数 (AAUDIO_FORMAT_PCM_I16)
 - `24` - 24位整数 (AAUDIO_FORMAT_PCM_I24_PACKED)
 - `32` - 32位整数 (AAUDIO_FORMAT_PCM_I32)
 - `FLOAT` - 32位浮点 (AAUDIO_FORMAT_PCM_FLOAT)
 
 **Performance Mode (性能模式):**
+
 - `AAUDIO_PERFORMANCE_MODE_LOW_LATENCY` - 低延迟模式
 - `AAUDIO_PERFORMANCE_MODE_POWER_SAVING` - 省电模式
 
 **Sharing Mode (共享模式):**
+
 - `AAUDIO_SHARING_MODE_EXCLUSIVE` - 独占模式
 - `AAUDIO_SHARING_MODE_SHARED` - 共享模式
 
@@ -171,6 +173,7 @@ rec_YYYYMMDD_HHMMSS_mmm_[sampleRate]k_[channels]ch_[bitDepth]bit.wav
 ```
 
 **示例文件名:**
+
 - `rec_20240124_143052_123_48k_1ch_16bit.wav`
 - `rec_20240124_143052_456_16k_1ch_16bit.wav`
 - `rec_20240124_143052_789_48k_2ch_24bit.wav`
@@ -209,6 +212,7 @@ rec_YYYYMMDD_HHMMSS_mmm_[sampleRate]k_[channels]ch_[bitDepth]bit.wav
 ## 📚 API 参考
 
 ### AAudioRecorder 类
+
 ```kotlin
 class AAudioRecorder {
     fun setAudioConfig(config: AAudioConfig)            // 设置配置
@@ -220,6 +224,7 @@ class AAudioRecorder {
 ```
 
 ### AAudioConfig 类
+
 ```kotlin
 data class AAudioConfig(
     val inputPreset: String,                    // 输入预设
@@ -238,33 +243,35 @@ data class AAudioConfig(
 ### 常见问题
 
 1. **录音失败**
-   - 确认已授予录音权限
-   - 检查设备麦克风是否正常
-   - 验证配置参数是否正确
+    - 确认已授予录音权限
+    - 检查设备麦克风是否正常
+    - 验证配置参数是否正确
 
 2. **权限问题**
-   - 应用首次运行时会自动请求权限，按照屏幕提示授予
-   - 如果权限被拒绝，可在系统设置中手动授予录音权限
-   - 使用 `adb shell pm grant com.example.aaudiorecorder android.permission.RECORD_AUDIO` 手动授予权限
-   - 使用 `adb shell setenforce 0` 临时禁用SELinux
-   - 检查存储权限
+    - 应用首次运行时会自动请求权限，按照屏幕提示授予
+    - 如果权限被拒绝，可在系统设置中手动授予录音权限
+    - 使用 `adb shell pm grant com.example.aaudiorecorder android.permission.RECORD_AUDIO` 手动授予权限
+    - 使用 `adb shell setenforce 0` 临时禁用SELinux
+    - 检查存储权限
 
 3. **配置加载失败**
-   - 检查JSON格式是否正确
-   - 验证配置文件路径
-   - 查看日志输出
+    - 检查JSON格式是否正确
+    - 验证配置文件路径
+    - 查看日志输出
 
 4. **文件写入失败**
-   - 确保输出目录存在
-   - 检查写入权限
-   - 验证磁盘空间
+    - 确保输出目录存在
+    - 检查写入权限
+    - 验证磁盘空间
 
 ### 调试信息
+
 ```bash
 adb logcat -s AAudioRecorder MainActivity
 ```
 
 ### 日志标签
+
 - `AAudioRecorder`: 录制器相关日志
 - `MainActivity`: 主界面相关日志
 - `AAudioConfig`: 配置相关日志

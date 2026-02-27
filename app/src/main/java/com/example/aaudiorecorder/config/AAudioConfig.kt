@@ -17,25 +17,25 @@ data class AAudioConfig(
     val performanceMode: String = "AAUDIO_PERFORMANCE_MODE_LOW_LATENCY",
     val sharingMode: String = "AAUDIO_SHARING_MODE_SHARED",
     val outputPath: String = "",
-    val description: String = "Default Recording Configuration"
+    val description: String = "Default Recording Configuration",
 ) {
-    
+
     init {
         // Validate parameters
-        require(AAudioConstants.isValidSampleRate(sampleRate)) { 
-            "Invalid sample rate: $sampleRate" 
+        require(AAudioConstants.isValidSampleRate(sampleRate)) {
+            "Invalid sample rate: $sampleRate"
         }
-        require(AAudioConstants.isValidChannelCount(channelCount)) { 
-            "Invalid channel count: $channelCount" 
+        require(AAudioConstants.isValidChannelCount(channelCount)) {
+            "Invalid channel count: $channelCount"
         }
-        require(AAudioConstants.isValidFormat(format)) { 
-            "Invalid format bit depth: $format (must be 16, 24, or 32)" 
+        require(AAudioConstants.isValidFormat(format)) {
+            "Invalid format bit depth: $format (must be 16, 24, or 32)"
         }
     }
-    
+
     companion object {
         private const val TAG = "AAudioConfig"
-        
+
         fun loadConfigs(context: Context): List<AAudioConfig> {
             return try {
                 val externalFile = File(AAudioConstants.CONFIG_FILE_PATH)
@@ -44,7 +44,8 @@ data class AAudioConfig(
                     externalFile.readText()
                 } else {
                     Log.i(TAG, "Loading recording configuration from assets")
-                    context.assets.open(AAudioConstants.ASSETS_CONFIG_FILE).bufferedReader().use { it.readText() }
+                    context.assets.open(AAudioConstants.ASSETS_CONFIG_FILE).bufferedReader()
+                        .use { it.readText() }
                 }
                 parseConfigs(jsonString)
             } catch (e: Exception) {
@@ -52,7 +53,7 @@ data class AAudioConfig(
                 getDefaultConfigs()
             }
         }
-        
+
         private fun parseConfigs(jsonString: String): List<AAudioConfig> {
             val configsArray = JSONObject(jsonString).getJSONArray("configs")
             return (0 until configsArray.length()).map { i ->
@@ -62,14 +63,16 @@ data class AAudioConfig(
                     sampleRate = config.optInt("sampleRate", 48000),
                     channelCount = config.optInt("channelCount", 1),
                     format = config.optInt("format", 16),
-                    performanceMode = config.optString("performanceMode", "AAUDIO_PERFORMANCE_MODE_LOW_LATENCY"),
+                    performanceMode = config.optString(
+                        "performanceMode", "AAUDIO_PERFORMANCE_MODE_LOW_LATENCY"
+                    ),
                     sharingMode = config.optString("sharingMode", "AAUDIO_SHARING_MODE_SHARED"),
                     outputPath = config.optString("outputPath", ""),
                     description = config.optString("description", "Recording Configuration")
                 )
             }
         }
-        
+
         private fun getDefaultConfigs(): List<AAudioConfig> {
             Log.w(TAG, "Using hardcoded emergency configuration")
             return listOf(
