@@ -2,12 +2,14 @@
 
 #include <sys/stat.h>
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <cstring>
 #include <iomanip>
 #include <memory>
 #include <sstream>
+#include <string>
 
 struct AudioRecorderState {
     AAudioStream* stream = nullptr;
@@ -34,12 +36,12 @@ namespace {
 
 AudioRecorderState g_recorder;
 
-} // namespace
+}  // namespace
 
 static void notifyRecordingStarted() {
     if (g_recorder.jvm && g_recorder.recorder_instance && g_recorder.on_recording_started_method) {
         JNIEnv* env;
-        if (g_recorder.jvm->GetEnv((void**)&env, JNI_VERSION_1_6) == JNI_OK) {
+        if (g_recorder.jvm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) == JNI_OK) {
             env->CallVoidMethod(g_recorder.recorder_instance, g_recorder.on_recording_started_method);
         }
     }
@@ -48,7 +50,7 @@ static void notifyRecordingStarted() {
 static void notifyRecordingStopped() {
     if (g_recorder.jvm && g_recorder.recorder_instance && g_recorder.on_recording_stopped_method) {
         JNIEnv* env;
-        if (g_recorder.jvm->GetEnv((void**)&env, JNI_VERSION_1_6) == JNI_OK) {
+        if (g_recorder.jvm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) == JNI_OK) {
             env->CallVoidMethod(g_recorder.recorder_instance, g_recorder.on_recording_stopped_method);
         }
     }
@@ -57,7 +59,7 @@ static void notifyRecordingStopped() {
 static void notifyRecordingError(const std::string& error) {
     if (g_recorder.jvm && g_recorder.recorder_instance && g_recorder.on_recording_error_method) {
         JNIEnv* env;
-        if (g_recorder.jvm->GetEnv((void**)&env, JNI_VERSION_1_6) == JNI_OK) {
+        if (g_recorder.jvm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) == JNI_OK) {
             jstring error_str = env->NewStringUTF(error.c_str());
             env->CallVoidMethod(g_recorder.recorder_instance, g_recorder.on_recording_error_method, error_str);
             env->DeleteLocalRef(error_str);
@@ -83,21 +85,21 @@ static std::string generateTimestampedFilePath() {
 
     int bits_per_sample = 16;
     switch (g_recorder.format) {
-    case AAUDIO_FORMAT_PCM_I16:
-        bits_per_sample = 16;
-        break;
-    case AAUDIO_FORMAT_PCM_FLOAT:
-        bits_per_sample = 32;
-        break;
-    case AAUDIO_FORMAT_PCM_I24_PACKED:
-        bits_per_sample = 24;
-        break;
-    case AAUDIO_FORMAT_PCM_I32:
-        bits_per_sample = 32;
-        break;
-    default:
-        bits_per_sample = 16;
-        break;
+        case AAUDIO_FORMAT_PCM_I16:
+            bits_per_sample = 16;
+            break;
+        case AAUDIO_FORMAT_PCM_FLOAT:
+            bits_per_sample = 32;
+            break;
+        case AAUDIO_FORMAT_PCM_I24_PACKED:
+            bits_per_sample = 24;
+            break;
+        case AAUDIO_FORMAT_PCM_I32:
+            bits_per_sample = 32;
+            break;
+        default:
+            bits_per_sample = 16;
+            break;
     }
     oss << "_" << bits_per_sample << "bit";
     oss << ".wav";
@@ -112,8 +114,10 @@ static std::string getFinalRecordingFilePath() {
     return g_recorder.output_path;
 }
 
-static aaudio_data_callback_result_t
-audioCallback(AAudioStream* stream, void* userData, void* audioData, int32_t numFrames) {
+static aaudio_data_callback_result_t audioCallback(AAudioStream* stream,
+                                                   void* userData,
+                                                   void* audioData,
+                                                   int32_t numFrames) {
     if (!g_recorder.is_recording.load(std::memory_order_acquire)) {
         return AAUDIO_CALLBACK_RESULT_STOP;
     }
@@ -125,27 +129,37 @@ audioCallback(AAudioStream* stream, void* userData, void* audioData, int32_t num
         return AAUDIO_CALLBACK_RESULT_STOP;
     }
 
-    int32_t channel_count = AAudioStream_getChannelCount(stream);
-    int32_t bytes_per_sample;
-
-    switch (AAudioStream_getFormat(stream)) {
-    case AAUDIO_FORMAT_PCM_I16:
-        bytes_per_sample = 2;
-        break;
-    case AAUDIO_FORMAT_PCM_FLOAT:
-        bytes_per_sample = 4;
-        break;
-    case AAUDIO_FORMAT_PCM_I24_PACKED:
-        bytes_per_sample = 3;
-        break;
-    case AAUDIO_FORMAT_PCM_I32:
-        bytes_per_sample = 4;
-        break;
-    default:
-        bytes_per_sample = 2;
-        break;
+    // Validate numFrames
+    if (numFrames <= 0) {
+        LOGE("Invalid numFrames: %d", numFrames);
+        return AAUDIO_CALLBACK_RESULT_STOP;
     }
 
+    int32_t channel_count = AAudioStream_getChannelCount(stream);
+    if (channel_count <= 0 || channel_count > 16) {
+        LOGE("Invalid channel count: %d", channel_count);
+        return AAUDIO_CALLBACK_RESULT_STOP;
+    }
+
+    // Get bytes per sample based on format
+    int32_t bytes_per_sample;
+    switch (AAudioStream_getFormat(stream)) {
+        case AAUDIO_FORMAT_PCM_I16:
+            bytes_per_sample = 2;
+            break;
+        case AAUDIO_FORMAT_PCM_I24_PACKED:
+            bytes_per_sample = 3;
+            break;
+        case AAUDIO_FORMAT_PCM_I32:
+        case AAUDIO_FORMAT_PCM_FLOAT:
+            bytes_per_sample = 4;
+            break;
+        default:
+            bytes_per_sample = 2;
+            break;
+    }
+
+    // Calculate bytes to write
     int32_t bytes_to_write = numFrames * channel_count * bytes_per_sample;
 
     if (!g_recorder.wav_file->writeData(audioData, static_cast<size_t>(bytes_to_write))) {
@@ -184,23 +198,36 @@ static bool createAAudioStream() {
     AAudioStreamBuilder_setSharingMode(builder, g_recorder.sharing_mode);
     AAudioStreamBuilder_setInputPreset(builder, g_recorder.input_preset);
 
+    // Set buffer capacity based on performance mode
+    int32_t buffer_capacity = (g_recorder.performance_mode == AAUDIO_PERFORMANCE_MODE_LOW_LATENCY)
+                                  ? (g_recorder.sample_rate * 40) / 1000    // 40ms for low latency
+                                  : (g_recorder.sample_rate * 100) / 1000;  // 100ms for power saving
+    AAudioStreamBuilder_setBufferCapacityInFrames(builder, buffer_capacity);
+
     AAudioStreamBuilder_setDataCallback(builder, audioCallback, nullptr);
     AAudioStreamBuilder_setErrorCallback(builder, errorCallback, nullptr);
 
     result = AAudioStreamBuilder_openStream(builder, &g_recorder.stream);
     AAudioStreamBuilder_delete(builder);
-
     if (result != AAUDIO_OK) {
         LOGE("Failed to open recording stream: %s", AAudio_convertResultToText(result));
         return false;
+    }
+
+    int32_t frames_per_burst = AAudioStream_getFramesPerBurst(g_recorder.stream);
+    if (frames_per_burst > 0) {
+        int32_t optimal_size =
+            frames_per_burst * (g_recorder.performance_mode == AAUDIO_PERFORMANCE_MODE_LOW_LATENCY ? 2 : 4);
+        optimal_size = std::min(optimal_size, AAudioStream_getBufferCapacityInFrames(g_recorder.stream));
+        AAudioStream_setBufferSizeInFrames(g_recorder.stream, optimal_size);
     }
 
     int32_t actual_sample_rate = AAudioStream_getSampleRate(g_recorder.stream);
     int32_t actual_channel_count = AAudioStream_getChannelCount(g_recorder.stream);
     aaudio_format_t actual_format = AAudioStream_getFormat(g_recorder.stream);
 
-    LOGI("Recording stream created - Sample Rate: %d, Channels: %d, Format: %d", actual_sample_rate,
-         actual_channel_count, actual_format);
+    LOGI("Recording stream created - Sample Rate: %d, Channels: %d, Format: %d, Buffer: %d frames", actual_sample_rate,
+         actual_channel_count, actual_format, AAudioStream_getBufferCapacityInFrames(g_recorder.stream));
 
     g_recorder.sample_rate = actual_sample_rate;
     g_recorder.channel_count = actual_channel_count;
@@ -211,13 +238,15 @@ static bool createAAudioStream() {
 
 extern "C" {
 
+JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
+    g_recorder.jvm = vm;
+    LOGI("JNI_OnLoad - AAudio Recorder");
+    return JNI_VERSION_1_6;
+}
+
 JNIEXPORT jboolean JNICALL Java_com_example_aaudiorecorder_recorder_AAudioRecorder_initializeNative(JNIEnv* env,
                                                                                                     jobject thiz) {
-    LOGI("Initializing AAudio recorder");
-
-    if (g_recorder.jvm == nullptr) {
-        env->GetJavaVM(&g_recorder.jvm);
-    }
+    LOGI("initializeNative");
 
     if (g_recorder.recorder_instance != nullptr) {
         env->DeleteGlobalRef(g_recorder.recorder_instance);
@@ -244,17 +273,20 @@ JNIEXPORT jboolean JNICALL Java_com_example_aaudiorecorder_recorder_AAudioRecord
     return JNI_TRUE;
 }
 
-JNIEXPORT jboolean JNICALL Java_com_example_aaudiorecorder_recorder_AAudioRecorder_setNativeConfig(JNIEnv* env,
-                                                                                                   jobject thiz,
-                                                                                                   jint inputPreset,
-                                                                                                   jint sampleRate,
-                                                                                                   jint channelCount,
-                                                                                                   jint format,
-                                                                                                   jint performanceMode,
-                                                                                                   jint sharingMode,
-                                                                                                   jstring outputPath) {
-    if (outputPath == nullptr) {
-        LOGE("Output path is null");
+JNIEXPORT jboolean JNICALL
+Java_com_example_aaudiorecorder_recorder_AAudioRecorder_setNativeConfig(JNIEnv* env,
+                                                                        jobject thiz,
+                                                                        jint inputPreset,
+                                                                        jint sampleRate,
+                                                                        jint channelCount,
+                                                                        jint format,
+                                                                        jint performanceMode,
+                                                                        jint sharingMode,
+                                                                        jstring audioFilePath) {
+    LOGI("setNativeConfig");
+
+    if (audioFilePath == nullptr) {
+        LOGE("Audio file path is null");
         return JNI_FALSE;
     }
 
@@ -265,21 +297,18 @@ JNIEXPORT jboolean JNICALL Java_com_example_aaudiorecorder_recorder_AAudioRecord
     g_recorder.performance_mode = static_cast<aaudio_performance_mode_t>(performanceMode);
     g_recorder.sharing_mode = static_cast<aaudio_sharing_mode_t>(sharingMode);
 
-    const char* path_str = env->GetStringUTFChars(outputPath, nullptr);
+    const char* path_str = env->GetStringUTFChars(audioFilePath, nullptr);
     if (path_str != nullptr) {
         g_recorder.output_path = path_str;
         // Check if path ends with .wav - if not, it's a directory path and we need to generate filename
         g_recorder.auto_generate_filename =
             (g_recorder.output_path.length() < 4 ||
              g_recorder.output_path.substr(g_recorder.output_path.length() - 4) != ".wav");
-        env->ReleaseStringUTFChars(outputPath, path_str);
+        env->ReleaseStringUTFChars(audioFilePath, path_str);
     } else {
-        LOGE("Failed to get output path string");
+        LOGE("Failed to get audio file path string");
         return JNI_FALSE;
     }
-
-    LOGI("Config updated - SR: %d, CH: %d, Format: %d, Path: %s, AutoGenerate: %s", sampleRate, channelCount, format,
-         g_recorder.output_path.c_str(), g_recorder.auto_generate_filename ? "true" : "false");
 
     return JNI_TRUE;
 }
@@ -291,7 +320,7 @@ JNIEXPORT jboolean JNICALL Java_com_example_aaudiorecorder_recorder_AAudioRecord
         return JNI_FALSE;
     }
 
-    LOGI("Starting recording");
+    LOGI("startNativeRecording");
 
     if (!createAAudioStream()) {
         notifyRecordingError("[STREAM] Failed to create recording stream");
@@ -312,18 +341,19 @@ JNIEXPORT jboolean JNICALL Java_com_example_aaudiorecorder_recorder_AAudioRecord
         return JNI_FALSE;
     }
 
+    // Set recording flag before starting stream to avoid race condition with callback
+    g_recorder.is_recording.store(true, std::memory_order_release);
+
     aaudio_result_t result = AAudioStream_requestStart(g_recorder.stream);
     if (result != AAUDIO_OK) {
         LOGE("Failed to start recording stream: %s", AAudio_convertResultToText(result));
+        g_recorder.is_recording.store(false, std::memory_order_release);
         g_recorder.wav_file->close();
         g_recorder.wav_file.reset();
         notifyRecordingError("[STREAM] Failed to start recording stream");
         return JNI_FALSE;
     }
 
-    g_recorder.is_recording.store(true);
-
-    LOGI("Recording started successfully: %s", file_path.c_str());
     notifyRecordingStarted();
 
     return JNI_TRUE;
@@ -331,7 +361,7 @@ JNIEXPORT jboolean JNICALL Java_com_example_aaudiorecorder_recorder_AAudioRecord
 
 JNIEXPORT jboolean JNICALL Java_com_example_aaudiorecorder_recorder_AAudioRecorder_stopNativeRecording(JNIEnv* env,
                                                                                                        jobject thiz) {
-    LOGI("Stopping recording");
+    LOGI("stopNativeRecording");
 
     g_recorder.is_recording.store(false, std::memory_order_release);
 
@@ -369,7 +399,7 @@ JNIEXPORT jboolean JNICALL Java_com_example_aaudiorecorder_recorder_AAudioRecord
 
 JNIEXPORT void JNICALL Java_com_example_aaudiorecorder_recorder_AAudioRecorder_releaseNative(JNIEnv* env,
                                                                                              jobject thiz) {
-    LOGI("Releasing AAudio recorder");
+    LOGI("releaseNative");
 
     if (g_recorder.is_recording.load()) {
         Java_com_example_aaudiorecorder_recorder_AAudioRecorder_stopNativeRecording(env, thiz);
@@ -385,14 +415,16 @@ JNIEXPORT void JNICALL Java_com_example_aaudiorecorder_recorder_AAudioRecorder_r
     g_recorder.on_recording_stopped_method = nullptr;
     g_recorder.on_recording_error_method = nullptr;
 
-    LOGI("AAudio recorder released");
+    LOGI("AAudioRecorder released");
 }
 
-} // extern "C"
+}  // extern "C"
 
 WavFile::WavFile() : sample_rate_(0), channel_count_(0), format_(AAUDIO_FORMAT_PCM_I16), data_size_(0) {}
 
-WavFile::~WavFile() noexcept { close(); }
+WavFile::~WavFile() noexcept {
+    close();
+}
 
 bool WavFile::open(const std::string& file_path, int32_t sample_rate, int32_t channel_count, aaudio_format_t format) {
     close();
@@ -411,7 +443,8 @@ bool WavFile::open(const std::string& file_path, int32_t sample_rate, int32_t ch
 
     writeHeader(0);
 
-    LOGI("WAV file opened for writing: %s", file_path.c_str());
+    int bits_per_sample = getBytesPerSample(format_) * 8;
+    LOGI("WAV file opened: %s, %dHz, %dch, %dbit", file_path.c_str(), sample_rate, channel_count, bits_per_sample);
     return true;
 }
 
@@ -438,20 +471,22 @@ bool WavFile::writeData(const void* data, size_t size) {
     return true;
 }
 
-bool WavFile::isOpen() const { return file_stream_.is_open(); }
+bool WavFile::isOpen() const {
+    return file_stream_.is_open();
+}
 
 int32_t WavFile::getBytesPerSample(aaudio_format_t format) {
     switch (format) {
-    case AAUDIO_FORMAT_PCM_I16:
-        return 2;
-    case AAUDIO_FORMAT_PCM_FLOAT:
-        return 4;
-    case AAUDIO_FORMAT_PCM_I24_PACKED:
-        return 3;
-    case AAUDIO_FORMAT_PCM_I32:
-        return 4;
-    default:
-        return 2;
+        case AAUDIO_FORMAT_PCM_I16:
+            return 2;
+        case AAUDIO_FORMAT_PCM_FLOAT:
+            return 4;
+        case AAUDIO_FORMAT_PCM_I24_PACKED:
+            return 3;
+        case AAUDIO_FORMAT_PCM_I32:
+            return 4;
+        default:
+            return 2;
     }
 }
 

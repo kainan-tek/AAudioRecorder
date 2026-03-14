@@ -12,8 +12,8 @@ android {
     defaultConfig {
         applicationId = "com.example.aaudiorecorder"
         minSdk = 32
-        versionCode = 20001
-        versionName = "2.0.1"
+        versionCode = 20100
+        versionName = "2.1.0"
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_21

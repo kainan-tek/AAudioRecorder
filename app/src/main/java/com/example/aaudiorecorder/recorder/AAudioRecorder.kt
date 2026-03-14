@@ -6,9 +6,16 @@ import com.example.aaudiorecorder.config.AAudioConfig
 import com.example.aaudiorecorder.common.AAudioConstants
 
 /**
- * AAudio Recorder - enhanced with better error handling
+ * Recording state enumeration
  */
-class AAudioRecorder(private val context: Context? = null) {
+enum class RecordingState {
+    IDLE, RECORDING, ERROR
+}
+
+/**
+ * Audio recorder using AAudio API
+ */
+class AAudioRecorder(private val context: Context) {
     companion object {
         private const val TAG = "AAudioRecorder"
 
@@ -30,41 +37,36 @@ class AAudioRecorder(private val context: Context? = null) {
 
     private var currentConfig: AAudioConfig = AAudioConfig()
     private var listener: RecordingListener? = null
-    private var isRecording = false
+
+    @Volatile
+    private var state = RecordingState.IDLE
 
     init {
         initializeNative()
     }
 
-    /**
-     * Set recording listener
-     */
     fun setRecordingListener(listener: RecordingListener?) {
         this.listener = listener
     }
 
-    /**
-     * Set audio configuration
-     * Note: Output path will be generated at recording start if empty
-     */
     fun setAudioConfig(config: AAudioConfig) {
-        if (isRecording) {
-            Log.w(TAG, "Cannot change config while recording")
+        if (state == RecordingState.RECORDING) {
+            Log.w(TAG, "Cannot change configuration while recording")
             return
         }
 
-        currentConfig = config
-        Log.i(TAG, "Configuration updated: ${currentConfig.description}")
-
-        // Validate output path (empty is valid, means use default path)
-        if (currentConfig.outputPath.isNotBlank() && !currentConfig.outputPath.endsWith(".wav")) {
+        // Validate output path before applying (empty is valid, means use default path)
+        if (config.audioFilePath.isNotBlank() && !config.audioFilePath.endsWith(".wav")) {
             Log.e(TAG, "Invalid output path: must be empty or end with .wav")
             return
         }
 
-        // If outputPath is empty, pass only the default directory path to native layer,
+        currentConfig = config
+        Log.i(TAG, "Configuration updated: ${config.description}")
+
+        // If audioFilePath is empty, pass only the default directory path to native layer,
         // Native layer will generate timestamped filename at recording start
-        val outputPath = currentConfig.outputPath.ifBlank {
+        val audioFilePath = currentConfig.audioFilePath.ifBlank {
             getDefaultDirectory()
         }
 
@@ -76,30 +78,40 @@ class AAudioRecorder(private val context: Context? = null) {
             AAudioConstants.getFormatFromBitDepth(currentConfig.format),
             AAudioConstants.getPerformanceMode(currentConfig.performanceMode),
             AAudioConstants.getSharingMode(currentConfig.sharingMode),
-            outputPath
+            audioFilePath
         )
     }
 
-    /**
-     * Start recording
-     */
     fun startRecording(): Boolean {
-        if (isRecording) {
+        if (state == RecordingState.RECORDING) {
             Log.w(TAG, "Already recording")
             listener?.onRecordingError("Already recording")
             return false
         }
+        if (state == RecordingState.ERROR) {
+            state = RecordingState.IDLE
+        }
 
         // Validate configuration before starting
         if (!AAudioConstants.isValidSampleRate(currentConfig.sampleRate)) {
-            val error = "Invalid sample rate: ${currentConfig.sampleRate}"
+            val error =
+                "${AAudioConstants.ErrorTypes.PARAM} Invalid sample rate: ${currentConfig.sampleRate}"
             Log.e(TAG, error)
             listener?.onRecordingError(error)
             return false
         }
 
         if (!AAudioConstants.isValidChannelCount(currentConfig.channelCount)) {
-            val error = "Invalid channel count: ${currentConfig.channelCount}"
+            val error =
+                "${AAudioConstants.ErrorTypes.PARAM} Invalid channel count: ${currentConfig.channelCount}"
+            Log.e(TAG, error)
+            listener?.onRecordingError(error)
+            return false
+        }
+
+        if (!AAudioConstants.isValidFormat(currentConfig.format)) {
+            val error =
+                "${AAudioConstants.ErrorTypes.PARAM} Invalid bit depth: ${currentConfig.format}"
             Log.e(TAG, error)
             listener?.onRecordingError(error)
             return false
@@ -110,42 +122,31 @@ class AAudioRecorder(private val context: Context? = null) {
         return startNativeRecording()
     }
 
-    /**
-     * Get default directory path for recording files
-     */
     private fun getDefaultDirectory(): String {
         val ctx = context
-            ?: throw IllegalStateException("Context is required for default file path generation")
         return ctx.getExternalFilesDir(null)?.absolutePath
             ?: throw IllegalStateException("Failed to get external files directory")
     }
 
-    fun stopRecording(): Boolean {
-        if (!isRecording) {
-            Log.w(TAG, "Not currently recording")
-            listener?.onRecordingError("Not currently recording")
-            return false
+    fun stopRecording() {
+        if (state != RecordingState.RECORDING) {
+            return
         }
 
         Log.d(TAG, "Stopping recording")
 
-        return stopNativeRecording()
+        stopNativeRecording()
     }
 
-    /**
-     * Check if currently recording
-     */
     fun isRecording(): Boolean {
-        return isRecording
+        return state == RecordingState.RECORDING
     }
 
-    /**
-     * Release resources
-     */
     fun release() {
-        if (isRecording) {
+        if (state == RecordingState.RECORDING) {
             stopRecording()
         }
+        listener = null
         try {
             releaseNative()
         } catch (e: Exception) {
@@ -163,7 +164,7 @@ class AAudioRecorder(private val context: Context? = null) {
         format: Int,
         performanceMode: Int,
         sharingMode: Int,
-        outputPath: String,
+        audioFilePath: String,
     ): Boolean
 
     private external fun startNativeRecording(): Boolean
@@ -173,21 +174,21 @@ class AAudioRecorder(private val context: Context? = null) {
     // Callback methods called from Native layer
     @Suppress("unused")
     private fun onNativeRecordingStarted() {
-        isRecording = true
+        state = RecordingState.RECORDING
         listener?.onRecordingStarted()
         Log.i(TAG, "Recording started successfully")
     }
 
     @Suppress("unused")
     private fun onNativeRecordingStopped() {
-        isRecording = false
+        state = RecordingState.IDLE
         listener?.onRecordingStopped()
-        Log.i(TAG, "Recording stopped successfully")
+        Log.i(TAG, "Recording stopped")
     }
 
     @Suppress("unused")
     private fun onNativeRecordingError(error: String) {
-        isRecording = false
+        state = RecordingState.ERROR
         listener?.onRecordingError(error)
         Log.e(TAG, "Recording error: $error")
     }

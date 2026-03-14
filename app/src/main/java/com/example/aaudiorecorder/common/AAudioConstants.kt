@@ -23,6 +23,14 @@ object AAudioConstants {
     const val ASSETS_CONFIG_FILE = "aaudio_recorder_configs.json"
 
     /**
+     * Error type prefixes for consistent error handling
+     * Note: FILE and STREAM are used in native layer only
+     */
+    object ErrorTypes {
+        const val PARAM = "[PARAM]"
+    }
+
+    /**
      * AAudio native constants (matching NDK definitions)
      */
     object AAudio {
@@ -33,8 +41,10 @@ object AAudioConstants {
         const val INPUT_PRESET_VOICE_COMMUNICATION = 7
         const val INPUT_PRESET_UNPROCESSED = 9
         const val INPUT_PRESET_VOICE_PERFORMANCE = 10
-        const val INPUT_PRESET_SYSTEM_ECHO_REFERENCE = 1997
-        const val INPUT_PRESET_SYSTEM_HOTWORD = 1999
+
+        // System-level input presets (require system signature or special permissions)
+        const val INPUT_PRESET_SYSTEM_ECHO_REFERENCE = 1997  // Requires system permissions
+        const val INPUT_PRESET_SYSTEM_HOTWORD = 1999          // Requires system signature
 
         // Format values
         const val FORMAT_PCM_I16 = 1
@@ -109,11 +119,17 @@ object AAudioConstants {
         default: Int,
         typeName: String = "",
     ): Int {
-        val result = map.entries.find { it.value == value }?.key ?: default
-        if (result == default && value.isNotEmpty()) {
-            android.util.Log.w("AAudioConstants", "Unknown $typeName value: $value, using default")
+        val entry = map.entries.find { it.value == value }
+        if (entry != null) {
+            return entry.key
         }
-        return result
+
+        if (value.isNotEmpty()) {
+            android.util.Log.w(
+                "AAudioConstants", "Unknown $typeName value: $value, using default: $default"
+            )
+        }
+        return default
     }
 
     /**

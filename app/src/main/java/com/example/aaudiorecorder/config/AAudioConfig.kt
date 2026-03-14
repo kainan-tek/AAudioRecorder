@@ -7,7 +7,7 @@ import org.json.JSONObject
 import java.io.File
 
 /**
- * AAudio recording configuration data class - optimized with validation
+ * AAudio recording configuration data class
  */
 data class AAudioConfig(
     val inputPreset: String = "AAUDIO_INPUT_PRESET_GENERIC",
@@ -16,8 +16,8 @@ data class AAudioConfig(
     val format: Int = 16, // Use a bit of depth directly (16, 24, 32)
     val performanceMode: String = "AAUDIO_PERFORMANCE_MODE_LOW_LATENCY",
     val sharingMode: String = "AAUDIO_SHARING_MODE_SHARED",
-    val outputPath: String = "",
-    val description: String = "Default Recording Configuration",
+    val audioFilePath: String = "",
+    val description: String = "Default Configuration",
 ) {
 
     init {
@@ -54,6 +54,11 @@ data class AAudioConfig(
             }
         }
 
+        fun reloadConfigs(context: Context): List<AAudioConfig> {
+            Log.i(TAG, "Reloading recording configuration file")
+            return loadConfigs(context)
+        }
+
         private fun parseConfigs(jsonString: String): List<AAudioConfig> {
             val configsArray = JSONObject(jsonString).getJSONArray("configs")
             return (0 until configsArray.length()).map { i ->
@@ -67,7 +72,7 @@ data class AAudioConfig(
                         "performanceMode", "AAUDIO_PERFORMANCE_MODE_LOW_LATENCY"
                     ),
                     sharingMode = config.optString("sharingMode", "AAUDIO_SHARING_MODE_SHARED"),
-                    outputPath = config.optString("outputPath", ""),
+                    audioFilePath = config.optString("audioFilePath", ""),
                     description = config.optString("description", "Recording Configuration")
                 )
             }
@@ -83,7 +88,7 @@ data class AAudioConfig(
                     format = 16,
                     performanceMode = "AAUDIO_PERFORMANCE_MODE_LOW_LATENCY",
                     sharingMode = "AAUDIO_SHARING_MODE_SHARED",
-                    outputPath = "",
+                    audioFilePath = "",
                     description = "Emergency Fallback - Mono Recording"
                 )
             )

@@ -1,119 +1,105 @@
-# AAudio Recorder
+# AAudioRecorder
 
 中文 | [English](README_EN.md)
 
-一个基于Android AAudio API的高性能音频录制器测试程序，支持8种录音配置和实时WAV文件写入。
+基于 Android AAudio API 的高性能音频录制器，支持 8 种录音场景配置。
 
-## 📋 项目概述
+## 目录
 
-AAudioRecorder是一个专为Android平台设计的音频录制测试工具，使用Google的AAudio低延迟音频API。该项目展示了如何在Android应用中实现高质量的音频录制，支持多种录音使用场景和性能模式。
+- [项目简介](#项目简介)
+- [快速开始](#快速开始)
+- [安装部署](#安装部署)
+- [配置说明](#配置说明)
+- [API 参考](#api-参考)
+- [故障排除](#故障排除)
+- [许可证](#许可证)
 
-## ✨ 主要特性
+## 项目简介
 
-- **🎙️ 高性能录音**: 基于AAudio API实现低延迟录制 (~10-40ms)
-- **🔧 8种录音预设**: 涵盖通用、语音、摄像、高性能等录音场景
-- **📱 现代化界面**: Material Design风格的直观控制界面
-- **🎵 多格式支持**: 支持PCM 16位、24位和浮点格式
-- **⚡ 实时处理**: 音频数据实时写入WAV文件，支持连续录制
-- **🛠️ 动态配置**: 运行时切换录音配置，支持JSON配置文件
-- **📝 智能命名**: 自动生成带时间戳的录音文件名
-- **🏗️ 优化架构**: 清晰的代码结构和模块化设计
+AAudioRecorder 是一个 Android 高性能音频录制器，基于 Android AAudio Native API 开发，适用于低延迟音频录制场景。
 
-## 🏗️ 技术架构
+### 核心特性
 
-### 核心组件
+- **8 种录音场景**: 通用录音、摄像录音、语音识别、语音通话等
+- **完整音频支持**: 1-16 声道，8kHz-192kHz 采样率，16/24/32 位 PCM
+- **WAV 文件输出**: 自动生成 WAV 文件头，支持智能文件命名
+- **低延迟模式**: 支持 LOW_LATENCY 性能模式，延迟可低至 10-40ms
+- **灵活配置**: JSON 配置文件，支持外部热更新
+- **Native 实现**: C++ 实现，JNI 回调，高性能低开销
 
-- **MainActivity**: 现代化主界面控制器，提供权限管理和用户交互
-- **AAudioRecorder**: Kotlin编写的音频录制器封装类，集成权限管理
-- **AAudioConfig**: 录音配置管理类，支持动态加载配置
-- **WavFile**: C++实现的WAV文件写入类，支持实时写入
-- **Native Engine**: C++实现的AAudio录音引擎
+### 录音场景
 
-### 技术栈
+| 场景    | Input Preset        | 采样率   | 声道  | 典型用途    |
+|-------|---------------------|-------|-----|---------|
+| 通用录音  | GENERIC             | 48kHz | 单声道 | 标准录音    |
+| 摄像录音  | CAMCORDER           | 48kHz | 立体声 | 视频录制    |
+| 语音识别  | VOICE_RECOGNITION   | 16kHz | 单声道 | ASR 应用  |
+| 语音通话  | VOICE_COMMUNICATION | 16kHz | 单声道 | VoIP 应用 |
+| 原始录音  | UNPROCESSED         | 48kHz | 立体声 | 无处理录音   |
+| 高性能语音 | VOICE_PERFORMANCE   | 48kHz | 单声道 | 专业录制    |
+| 回声参考  | ECHO_REFERENCE      | 48kHz | 立体声 | AEC 参考  |
+| 热词检测  | HOTWORD             | 16kHz | 单声道 | 低功耗检测   |
 
-- **语言**: Kotlin + C++
-- **音频API**: Android AAudio
+## 快速开始
+
+### 基本使用
+
+1. **选择配置** - 通过下拉菜单选择录音场景
+2. **开始录音** - 点击绿色录音按钮
+3. **停止录音** - 点击红色停止按钮
+4. **重载配置** - 长按下拉菜单重新加载外部配置
+
+### 常用操作
+
+```bash
+# 查看录音日志
+adb logcat -s AAudioRecorder MainActivity AAudioConfig
+
+# 检查配置文件
+adb shell cat /data/aaudio_recorder_configs.json
+
+# 查看录音文件
+adb shell ls -la /data/recorded_*.wav
+```
+
+## 安装部署
+
+### 环境要求
+
+- **Android 版本**: Android 12L (API 32) 或更高
+- **开发环境**: Android Studio + NDK 29.0+
 - **构建系统**: Gradle + CMake
-- **最低版本**: Android 12L (API 32)
-- **目标版本**: Android 15 (API 36)
-- **NDK版本**: 29.0.14206865
-- **Java版本**: Java 21
 
-## 🎙️ 支持的录音场景
+### 编译安装
 
-### 8种预设配置
+```bash
+git clone https://github.com/kainan-tek/AAudioRecorder.git
+cd AAudioRecorder
+./gradlew assembleDebug
+adb install app/build/outputs/apk/debug/app-debug.apk
+```
 
-1. **通用录音** - 标准录音场景 (48kHz单声道，低延迟)
-2. **摄像录音** - 视频录制音频 (48kHz立体声，省电模式)
-3. **语音识别** - 语音识别优化 (16kHz单声道，低延迟)
-4. **语音通话** - 语音通信优化 (16kHz单声道，低延迟)
-5. **原始录音** - 无处理录音 (48kHz立体声，16位，独占模式)
-6. **高性能语音** - 专业语音录制 (48kHz单声道，独占模式)
-7. **回声参考** - 用于AEC的回声参考 (48kHz立体声，独占模式)
-8. **热词检测** - 低功耗热词检测 (16kHz单声道，省电模式)
+### 权限配置
 
-## 🚀 快速开始
+| 权限                       | 用途     | 版本要求        |
+|--------------------------|--------|-------------|
+| `RECORD_AUDIO`           | 录音权限   | 全部          |
+| `READ_EXTERNAL_STORAGE`  | 读取配置文件 | Android 12- |
+| `WRITE_EXTERNAL_STORAGE` | 保存录音文件 | Android 9-  |
 
-### 系统要求
+```bash
+# 手动授予录音权限
+adb shell pm grant com.example.aaudiorecorder android.permission.RECORD_AUDIO
+```
 
-- Android 12L (API 32) 或更高版本
-- 支持AAudio的设备
-- 开发环境: Android Studio
+## 配置说明
 
-### 权限要求
+### 配置文件位置
 
-- `RECORD_AUDIO`: 录音权限 (核心功能必需)
-- `READ_EXTERNAL_STORAGE`: 读取外部存储权限 (Android 12及以下，用于读取配置文件)
-- `WRITE_EXTERNAL_STORAGE`: 写入外部存储权限 (Android 9及以下，用于保存录音文件)
-
-### 安装步骤
-
-1. **克隆项目**
-   ```bash
-   git clone https://github.com/kainan-tek/AAudioRecorder.git
-   cd AAudioRecorder
-   ```
-
-2. **编译安装**
-   ```bash
-   ./gradlew assembleDebug
-   adb install app/build/outputs/apk/debug/app-debug.apk
-   ```
-
-3. **运行应用**
-    - 首次运行时，应用会自动请求录音权限
-    - 按照屏幕提示授予所需权限
-
-## 📖 使用说明
-
-### 基本操作
-
-1. **录音控制**
-    - 🎙️ **开始录音**: 点击绿色录音按钮
-    - ⏹️ **停止录音**: 点击红色停止按钮
-    - ⚙️ **录音配置**: 点击配置按钮切换录音设置
-
-2. **配置管理**
-    - 应用启动时自动加载配置
-    - 支持从外部文件动态加载配置
-    - 可在运行时通过下拉菜单切换不同的录音场景
-    - 长按配置下拉菜单可重新加载外部配置文件
-
-### 界面功能
-
-- **状态显示**: 实时显示录音状态和音频参数
-- **配置选择**: 通过下拉菜单选择不同的录音配置
-- **权限管理**: 自动检查和申请必要权限
-- **配置重载**: 长按下拉菜单重新加载外部配置文件
-
-## 🔧 配置文件
-
-### 配置位置
-
-- **外部配置**: `/data/aaudio_recorder_configs.json` (优先)
+- **外部配置**: `/data/aaudio_recorder_configs.json`（优先加载）
 - **内置配置**: `app/src/main/assets/aaudio_recorder_configs.json`
 
-### 配置格式
+### 配置文件格式
 
 ```json
 {
@@ -125,176 +111,136 @@ AAudioRecorder是一个专为Android平台设计的音频录制测试工具，�
       "format": 16,
       "performanceMode": "AAUDIO_PERFORMANCE_MODE_LOW_LATENCY",
       "sharingMode": "AAUDIO_SHARING_MODE_SHARED",
-      "outputPath": "/data/recorded_48k_1ch_16bit.wav",
-      "description": "Generic Recording - 48kHz Mono 16-bit"
+      "audioFilePath": "/data/recorded_48k_1ch_16bit.wav",
+      "description": "Generic Recording"
     }
   ]
 }
 ```
 
-### 支持的常量值
+### 配置参数
 
-**Input Preset (输入预设):**
+#### Input Preset（输入预设）
 
-- `AAUDIO_INPUT_PRESET_GENERIC` - 通用录音
-- `AAUDIO_INPUT_PRESET_CAMCORDER` - 摄像录音
-- `AAUDIO_INPUT_PRESET_VOICE_RECOGNITION` - 语音识别
-- `AAUDIO_INPUT_PRESET_VOICE_COMMUNICATION` - 语音通话
-- `AAUDIO_INPUT_PRESET_UNPROCESSED` - 原始录音
-- `AAUDIO_INPUT_PRESET_VOICE_PERFORMANCE` - 高性能语音
-- `AAUDIO_INPUT_PRESET_SYSTEM_ECHO_REFERENCE` - 回声参考
-- `AAUDIO_INPUT_PRESET_SYSTEM_HOTWORD` - 热词检测
+| 值                                           | 说明    | 典型用途    |
+|---------------------------------------------|-------|---------|
+| `AAUDIO_INPUT_PRESET_GENERIC`               | 通用录音  | 标准录音场景  |
+| `AAUDIO_INPUT_PRESET_CAMCORDER`             | 摄像录音  | 视频录制    |
+| `AAUDIO_INPUT_PRESET_VOICE_RECOGNITION`     | 语音识别  | ASR 应用  |
+| `AAUDIO_INPUT_PRESET_VOICE_COMMUNICATION`   | 语音通话  | VoIP 应用 |
+| `AAUDIO_INPUT_PRESET_UNPROCESSED`           | 原始录音  | 无处理录音   |
+| `AAUDIO_INPUT_PRESET_VOICE_PERFORMANCE`     | 高性能语音 | 专业录制    |
+| `AAUDIO_INPUT_PRESET_SYSTEM_ECHO_REFERENCE` | 回声参考  | AEC 参考  |
+| `AAUDIO_INPUT_PRESET_SYSTEM_HOTWORD`        | 热词检测  | 低功耗检测   |
 
-**Format (音频格式):**
+#### Format（音频格式）
 
-- `16` - 16位整数 (AAUDIO_FORMAT_PCM_I16)
-- `24` - 24位整数 (AAUDIO_FORMAT_PCM_I24_PACKED)
-- `32` - 32位整数 (AAUDIO_FORMAT_PCM_I32)
-- `FLOAT` - 32位浮点 (AAUDIO_FORMAT_PCM_FLOAT)
+| 值    | 说明         |
+|------|------------|
+| `16` | 16 位整数 PCM |
+| `24` | 24 位整数 PCM |
+| `32` | 32 位整数 PCM |
 
-**Performance Mode (性能模式):**
+> **注意**: 配置文件中 `format` 字段使用位深度整数值（16/24/32），不支持字符串格式。
 
-- `AAUDIO_PERFORMANCE_MODE_LOW_LATENCY` - 低延迟模式
-- `AAUDIO_PERFORMANCE_MODE_POWER_SAVING` - 省电模式
+#### Performance Mode（性能模式）
 
-**Sharing Mode (共享模式):**
+| 值                                      | 说明    | 典型延迟      |
+|----------------------------------------|-------|-----------|
+| `AAUDIO_PERFORMANCE_MODE_LOW_LATENCY`  | 低延迟模式 | ~10-40ms  |
+| `AAUDIO_PERFORMANCE_MODE_POWER_SAVING` | 省电模式  | ~80-120ms |
+| `AAUDIO_PERFORMANCE_MODE_NONE`         | 默认模式  | 系统默认      |
 
-- `AAUDIO_SHARING_MODE_EXCLUSIVE` - 独占模式
-- `AAUDIO_SHARING_MODE_SHARED` - 共享模式
+### 智能文件命名
 
-## 📝 智能文件命名
-
-### 自动命名规则
-
-当配置中的 `outputPath` 为空时，系统会在录音开始时自动生成带时间戳的文件名：
+当 `audioFilePath` 为空时，自动生成带时间戳的文件名：
 
 ```
 rec_YYYYMMDD_HHMMSS_mmm_[sampleRate]k_[channels]ch_[bitDepth]bit.wav
 ```
 
-**示例文件名:**
+**示例**: `rec_20240124_143052_123_48k_1ch_16bit.wav`
 
-- `rec_20240124_143052_123_48k_1ch_16bit.wav`
-- `rec_20240124_143052_456_16k_1ch_16bit.wav`
-- `rec_20240124_143052_789_48k_2ch_24bit.wav`
-
-### 文件路径规则
-
-- **指定路径**: 使用配置中的 `outputPath` 完整路径
-- **自动路径**: 保存到应用默认存储目录 (`getExternalFilesDir(null)`)
-- **权限要求**: 确保应用有写入权限
-
-## 🔍 技术细节
-
-### AAudio集成
-
-- 使用callback模式实现低延迟录制
-- 支持多种音频格式 (16/24位PCM和浮点)
-- 完整的错误处理机制
-- 实时WAV文件写入
-
-### 数据流架构
-
-```
-麦克风 → AAudio Stream → Audio Callback → WavFileWriter → WAV文件
-                              ↓
-                         JNI回调 → Kotlin UI更新
-```
-
-### WAV文件写入
-
-- **实时写入**: 录音过程中持续写入音频数据
-- **格式支持**: 标准RIFF/WAVE格式
-- **多声道支持**: 1-16声道录制
-- **采样率范围**: 8kHz - 192kHz
-- **位深度支持**: 8/16/24/32位和浮点
-
-## 📚 API 参考
+## API 参考
 
 ### AAudioRecorder 类
 
 ```kotlin
-class AAudioRecorder {
-    fun setAudioConfig(config: AAudioConfig)            // 设置配置
-    fun startRecording(): Boolean                       // 开始录音
-    fun stopRecording(): Boolean                        // 停止录音
-    fun isRecording(): Boolean                          // 检查录音状态
-    fun setRecordingListener(listener: RecordingListener?) // 设置监听器
+class AAudioRecorder(private val context: Context) {
+    fun setAudioConfig(config: AAudioConfig)   // 设置音频配置
+    fun startRecording(): Boolean              // 开始录音
+    fun stopRecording()                        // 停止录音（幂等）
+    fun isRecording(): Boolean                 // 检查录音状态
+    fun release()                              // 释放资源
+    fun setRecordingListener(listener: RecordingListener?)  // 设置监听器
 }
 ```
 
-### AAudioConfig 类
+### RecordingListener 接口
 
 ```kotlin
-data class AAudioConfig(
-    val inputPreset: String,                    // 输入预设
-    val sampleRate: Int,                        // 采样率
-    val channelCount: Int,                      // 声道数
-    val format: Any,                            // 音频格式
-    val performanceMode: String,                // 性能模式
-    val sharingMode: String,                    // 共享模式
-    val outputPath: String,                     // 输出路径
-    val description: String                     // 配置描述
-)
+interface RecordingListener {
+    fun onRecordingStarted()                   // 录音开始回调
+    fun onRecordingStopped()                   // 录音停止回调
+    fun onRecordingError(error: String)        // 录音错误回调
+}
 ```
 
-## 🐛 故障排除
+### 错误前缀
+
+| 前缀        | 说明     |
+|-----------|--------|
+| `[PARAM]` | 参数验证错误 |
+
+> **注意**: `[FILE]`、`[STREAM]`、`[PERMISSION]` 错误仅在 Native 层使用，Java/Kotlin 层不直接暴露。
+
+## 故障排除
 
 ### 常见问题
 
-1. **录音失败**
-    - 确认已授予录音权限
-    - 检查设备麦克风是否正常
-    - 验证配置参数是否正确
-
-2. **权限问题**
-    - 应用首次运行时会自动请求权限，按照屏幕提示授予
-    - 如果权限被拒绝，可在系统设置中手动授予录音权限
-    - 使用 `adb shell pm grant com.example.aaudiorecorder android.permission.RECORD_AUDIO` 手动授予权限
-    - 使用 `adb shell setenforce 0` 临时禁用SELinux
-    - 检查存储权限
-
-3. **配置加载失败**
-    - 检查JSON格式是否正确
-    - 验证配置文件路径
-    - 查看日志输出
-
-4. **文件写入失败**
-    - 确保输出目录存在
-    - 检查写入权限
-    - 验证磁盘空间
-
-### 调试信息
+#### 1. 录音失败
 
 ```bash
-adb logcat -s AAudioRecorder MainActivity
+# 检查录音权限
+adb shell dumpsys package com.example.aaudiorecorder | grep RECORD_AUDIO
+
+# 查看详细日志
+adb logcat -s AAudioRecorder aaudio_recorder
 ```
 
-### 日志标签
+#### 2. 权限问题
 
-- `AAudioRecorder`: 录制器相关日志
-- `MainActivity`: 主界面相关日志
-- `AAudioConfig`: 配置相关日志
+```bash
+adb shell pm grant com.example.aaudiorecorder android.permission.RECORD_AUDIO
+adb shell setenforce 0
+```
 
-## 📊 性能指标
+#### 3. 文件保存失败
 
-- **低延迟模式**: ~10-40ms
-- **省电模式**: ~80-120ms
-- **采样率**: 8kHz - 192kHz
-- **声道数**: 1-16声道
-- **位深度**: 8/16/24/32位和浮点
-- **支持格式**: PCM WAV文件
+```bash
+adb shell df /data          # 检查磁盘空间
+adb shell ls -la /data/     # 检查文件权限
+```
 
-## 🔗 相关项目
+### 调试命令
 
-- [**AAudioPlayer**](https://github.com/kainan-tek/AAudioPlayer) - 配套的AAudio播放器项目
-- [**AudioPlayer**](https://github.com/kainan-tek/AudioPlayer) - 基础音频播放器项目
-- [**AudioRecorder**](https://github.com/kainan-tek/AudioRecorder) - 基础音频录制器项目
+```bash
+adb logcat -s AAudioRecorder MainActivity AAudioConfig aaudio_recorder
+adb logcat -s AAudio
+```
 
-## 📄 许可证
+## 相关项目
 
-本项目采用MIT许可证 - 查看 [LICENSE](LICENSE) 文件了解详情。
+- [AAudioPlayer](https://github.com/kainan-tek/AAudioPlayer) - 基于 AAudio API 的高性能播放器
+- [AudioPlayer](https://github.com/kainan-tek/AudioPlayer) - 基于 AudioTrack API 的音频播放器
+- [AudioRecorder](https://github.com/kainan-tek/AudioRecorder) - 基于 AudioRecord API 的音频录制器
+- [audio_test_client](https://github.com/kainan-tek/audio_test_client) - Android 系统级音频测试工具
+
+## 许可证
+
+本项目采用 MIT License 许可证。详细信息请参阅 [LICENSE](LICENSE) 文件。
 
 ---
 
-**注意**: 本项目仅用于学习和测试目的，请确保在合适的设备和环境中使用，并遵守相关的录音法律法规。
+**注意**: 本项目仅供学习和测试使用，请遵守相关录音法律法规。AAudio API 需要 Android 12L (API 32)
+或更高版本。

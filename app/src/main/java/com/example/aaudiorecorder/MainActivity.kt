@@ -15,19 +15,20 @@ import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.example.aaudiorecorder.config.AAudioConfig
 import com.example.aaudiorecorder.recorder.AAudioRecorder
 
 /**
  * AAudio Recorder Main Activity
- * 
+ *
  * Usage Instructions:
- * 1. Ensure device supports AAudio API (Android 8.1+)
+ * 1. Ensure device supports AAudio API
  * 2. Grant recording permissions
  * 3. Select recording configuration from dropdown
  * 4. Start recording
+ *
+ * System Requirements: Android 12L (API 32+)
  */
 class MainActivity : AppCompatActivity() {
 
@@ -49,8 +50,6 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Hide title bar
-        supportActionBar?.hide()
         setContentView(R.layout.activity_main)
 
         initViews()
@@ -141,19 +140,47 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
+     * Reload configuration file
+     */
+    @SuppressLint("SetTextI18n")
+    private fun reloadConfigurations() {
+        try {
+            val previousDescription = currentConfig?.description
+            availableConfigs = AAudioConfig.reloadConfigs(this)
+            if (availableConfigs.isNotEmpty()) {
+                // Try to keep previous selection if it still exists
+                currentConfig = previousDescription?.let { desc ->
+                    availableConfigs.find { it.description == desc }
+                } ?: availableConfigs[0]
+                audioRecorder.setAudioConfig(currentConfig!!)
+                isSpinnerInitialized = false
+                setupConfigSpinner()
+                updateRecordingInfo()
+                showToast("Configuration reloaded successfully")
+                statusText.text = "Ready to record"
+                Log.i(TAG, "Reloaded ${availableConfigs.size} recording configurations")
+            } else {
+                showToast("No valid configurations found")
+                statusText.text = "Recording configuration load failed"
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to reload configurations", e)
+            showToast("Configuration reload failed: ${e.message}")
+        }
+    }
+
+    /**
      * Setup configuration spinner
      */
     private fun setupConfigSpinner() {
         val configs = availableConfigs
-        Log.d(TAG, "Setting up recording config spinner with ${configs.size} configurations")
 
         if (configs.isEmpty()) {
-            Log.w(TAG, "No recording configurations available for spinner")
+            Log.w(TAG, "No configurations available")
             return
         }
 
         val configNames = configs.map { it.description }
-        Log.d(TAG, "Recording config names: $configNames")
 
         val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, configNames)
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
@@ -164,10 +191,6 @@ class MainActivity : AppCompatActivity() {
             val index = configs.indexOfFirst { config -> config.description == it.description }
             if (index >= 0) {
                 configSpinner.setSelection(index)
-                Log.d(
-                    TAG,
-                    "Set initial recording spinner selection to index $index: ${it.description}"
-                )
             }
         }
 
@@ -180,44 +203,23 @@ class MainActivity : AppCompatActivity() {
             ) {
                 if (!isSpinnerInitialized) {
                     isSpinnerInitialized = true
-                    Log.d(TAG, "Recording spinner initialized, skipping first selection")
                     return
                 }
 
                 val selectedConfig = configs[position]
-                Log.d(TAG, "Recording config selected: ${selectedConfig.description}")
                 currentConfig = selectedConfig
                 audioRecorder.setAudioConfig(selectedConfig)
                 updateRecordingInfo()
-                showToast("Switched to recording config: ${selectedConfig.description}")
+                showToast("Switched to: ${selectedConfig.description}")
             }
 
-            override fun onNothingSelected(parent: AdapterView<*>?) {
-                Log.d(TAG, "Nothing selected in recording spinner")
-            }
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
         }
 
         // Add long press listener to reload configurations
         configSpinner.setOnLongClickListener {
-            Log.d(TAG, "Long press detected on recording spinner")
             reloadConfigurations()
             true
-        }
-    }
-
-    /**
-     * Reload configuration file
-     */
-    private fun reloadConfigurations() {
-        try {
-            loadConfigurations()
-            showToast("Configuration reloaded successfully")
-            // Refresh spinner after reload
-            isSpinnerInitialized = false
-            setupConfigSpinner()
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to reload configurations", e)
-            showToast("Configuration reload failed: ${e.message}")
         }
     }
 
@@ -254,20 +256,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun requestAudioPermission() {
-        val permissions = getRequiredPermissions()
-        val deniedPermissions = permissions.filter {
-            ActivityCompat.shouldShowRequestPermissionRationale(this, it)
-        }
-
-        if (deniedPermissions.isNotEmpty()) {
-            AlertDialog.Builder(this).setTitle("Permission Required")
-                .setMessage("This app needs microphone and storage access permissions to record and save audio files.")
-                .setPositiveButton("Grant") { _, _ ->
-                    ActivityCompat.requestPermissions(this, permissions, PERMISSION_REQUEST_CODE)
-                }.setNegativeButton("Cancel", null).show()
-        } else {
-            ActivityCompat.requestPermissions(this, permissions, PERMISSION_REQUEST_CODE)
-        }
+        requestPermissions(getRequiredPermissions(), PERMISSION_REQUEST_CODE)
     }
 
     override fun onRequestPermissionsResult(
@@ -314,14 +303,14 @@ class MainActivity : AppCompatActivity() {
     @SuppressLint("SetTextI18n")
     private fun updateRecordingInfo() {
         currentConfig?.let { config ->
-            val filePathDisplay = config.outputPath.ifBlank {
+            val filePathDisplay = config.audioFilePath.ifBlank {
                 "<App default path (auto-generated at recording start)>"
             }
             val configInfo =
                 "Current Config: ${config.description}\n" + "Source: ${config.inputPreset}\n" + "Mode: ${config.performanceMode} | ${config.sharingMode}\n" + "File: $filePathDisplay"
             recordingInfoText.text = configInfo
         } ?: run {
-            recordingInfoText.text = "Recording Information"
+            recordingInfoText.text = "Recording Info"
         }
     }
 
@@ -341,9 +330,9 @@ class MainActivity : AppCompatActivity() {
         AlertDialog.Builder(this).setTitle("Recording Error").setMessage(userMessage)
             .setPositiveButton("OK") { dialog, _ ->
                 dialog.dismiss()
-                statusText.setText(R.string.status_ready)
+                statusText.text = "Ready to record"
             }.setCancelable(true).setOnCancelListener {
-                statusText.setText(R.string.status_ready)
+                statusText.text = "Ready to record"
             }.show()
 
         statusText.text = "Error: $userMessage"
@@ -363,8 +352,8 @@ class MainActivity : AppCompatActivity() {
             ) -> "Audio system initialization failed. Please try again."
 
             error.startsWith(
-                "[PERMISSION]", ignoreCase = true
-            ) -> "Microphone access permission is required. Please grant the permission in Settings."
+                "[PARAM]", ignoreCase = true
+            ) -> "Invalid audio configuration. Please select a different configuration."
 
             error.contains(
                 "Already recording", ignoreCase = true
@@ -373,10 +362,6 @@ class MainActivity : AppCompatActivity() {
             error.contains(
                 "Not currently recording", ignoreCase = true
             ) -> "No recording is in progress."
-
-            error.contains(
-                "Invalid", ignoreCase = true
-            ) -> "Invalid audio configuration. Please select a different configuration."
 
             else -> "Recording failed. Please try again."
         }

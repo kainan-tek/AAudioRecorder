@@ -10,6 +10,10 @@ add_library(${CMAKE_PROJECT_NAME} SHARED
         aaudio_recorder.cpp
         )
 
+# Specify C++17 standard for modern C++ features
+set_property(TARGET ${CMAKE_PROJECT_NAME} PROPERTY CXX_STANDARD 17)
+set_property(TARGET ${CMAKE_PROJECT_NAME} PROPERTY CXX_STANDARD_REQUIRED ON)
+
 # Specifies libraries CMake should link to your target library.
 target_link_libraries(${CMAKE_PROJECT_NAME}
         # List libraries link to the target library

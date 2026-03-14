@@ -1,29 +1,3 @@
 <resources>
     <string name="app_name">AAudioRecorder</string>
-    <string name="button1">START</string>
-    <string name="button2">STOP</string>
-    
-    <!-- Status text -->
-    <string name="status_ready">Ready to Record</string>
-    <string name="status_recording">Recording...</string>
-    <string name="status_stopped">Recording Stopped</string>
-    <string name="status_error">Error Occurred</string>
-    
-    <!-- Button text -->
-    <string name="record_button">Start Record</string>
-    <string name="stop_record_button">Stop Record</string>
-    <string name="config_button">Record Configuration</string>
-    
-    <!-- Information text -->
-    <string name="recording_info_default">Record Information</string>
-    <string name="no_recording_file">No Recording File</string>
-    
-    <!-- Permission related -->
-    <string name="permission_required">Recording Permission Required</string>
-    <string name="permission_denied">Permission Denied, Cannot Record</string>
-    
-    <!-- Error messages -->
-    <string name="error_init_failed">Initialization Failed</string>
-    <string name="error_start_recording">Failed to Start Recording</string>
-    <string name="error_stop_recording">Failed to Stop Recording</string>
 </resources>
