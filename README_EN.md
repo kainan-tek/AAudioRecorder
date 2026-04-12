@@ -14,6 +14,7 @@ configurations.
 - [API Reference](#api-reference)
 - [Troubleshooting](#troubleshooting)
 - [License](#license)
+- [Contact](#contact)
 
 ## Introduction
 
@@ -248,7 +249,24 @@ adb logcat -s AAudio
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
----
-
 **Note**: This project is for learning and testing purposes only. Please comply with relevant
 recording laws and regulations. AAudio API requires Android 12L (API 32) or higher.
+
+## Contact 
+
+ - **Author**: kainan-tek 
+ - **Email**: kainanos@outlook.com 
+ - **GitHub**: https://github.com/kainan-tek/AAudioRecorder 
+ - **Issue**: `https://github.com/kainan-tek/AAudioRecorder/issues` 
+
+ ---
+
+ <div align="center"> 
+
+ **If this project helps you, please give it a ⭐ Star!** 
+
+ Made with ❤️ by kainan-tek 
+
+ [⬆ Back to top](#aaudiorecorder) 
+
+ </div>

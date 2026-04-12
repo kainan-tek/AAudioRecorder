@@ -54,9 +54,8 @@ data class AAudioConfig(
             }
         }
 
-        fun reloadConfigs(context: Context): List<AAudioConfig> {
-            Log.i(TAG, "Reloading recording configuration file")
-            return loadConfigs(context)
+        fun reloadConfigs(context: Context): List<AAudioConfig> = loadConfigs(context).also {
+            Log.i(TAG, "Reloading configuration file")
         }
 
         private fun parseConfigs(jsonString: String): List<AAudioConfig> {

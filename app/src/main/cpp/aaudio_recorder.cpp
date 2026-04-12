@@ -11,12 +11,39 @@
 #include <sstream>
 #include <string>
 
+#include <aaudio/AAudio.h>
+
+namespace {
+
+    struct AAudioStreamDeleter {
+        void operator()(AAudioStream *s) const {
+            if (s) AAudioStream_close(s);
+        }
+    };
+
+    using AAudioStreamPtr = std::unique_ptr<AAudioStream, AAudioStreamDeleter>;
+
+}  // namespace
+
+/**
+ * Global audio recorder state
+ *
+ * Design decision: Using global state because:
+ * 1. Single instance per application (audio recording hardware is exclusive resource)
+ * 2. JNI library is loaded once per process
+ * 3. Simpler and more performant than instance management
+ * 4. No requirement for multiple simultaneous recording instances
+ *
+ * Thread safety: Protected by atomic operations and JNI calls from Java layer
+ * All state modifications are serialized through JNI method calls
+ */
 struct AudioRecorderState {
-    AAudioStream* stream = nullptr;
+    AAudioStreamPtr stream;
     std::unique_ptr<WavFile> wav_file;
     std::atomic<bool> is_recording{false};
+    std::atomic<bool> callback_notified{false};  // true if Java already notified by callback
 
-    JavaVM* jvm = nullptr;
+    JavaVM *jvm = nullptr;
     jobject recorder_instance = nullptr;
     jmethodID on_recording_started_method = nullptr;
     jmethodID on_recording_stopped_method = nullptr;
@@ -34,43 +61,79 @@ struct AudioRecorderState {
 
 namespace {
 
-AudioRecorderState g_recorder;
+    AudioRecorderState g_recorder;  // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
+
+    bool validateRecorderState() {
+        return !g_recorder.is_recording.load(std::memory_order_acquire);
+    }
 
 }  // namespace
 
-static void notifyRecordingStarted() {
-    if (g_recorder.jvm && g_recorder.recorder_instance && g_recorder.on_recording_started_method) {
-        JNIEnv* env;
-        if (g_recorder.jvm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) == JNI_OK) {
-            env->CallVoidMethod(g_recorder.recorder_instance, g_recorder.on_recording_started_method);
+// RAII helper: attach current thread to JVM if needed, detach on destruction
+struct JniThreadAttachment {
+    JavaVM *jvm;
+    JNIEnv *env = nullptr;
+    bool attached = false;
+
+    explicit JniThreadAttachment(JavaVM *vm) : jvm(vm) {
+        if (jvm->GetEnv(reinterpret_cast<void **>(&env), JNI_VERSION_1_6) != JNI_OK) {
+            if (jvm->AttachCurrentThread(&env, nullptr) == JNI_OK) {
+                attached = true;
+            }
         }
     }
+
+    ~JniThreadAttachment() {
+        if (attached) {
+            jvm->DetachCurrentThread();
+        }
+    }
+
+    [[nodiscard]] bool ok() const { return env != nullptr; }
+};
+
+static void notifyJavaCallback(jmethodID method, const char* name) {
+    if (!g_recorder.jvm || !g_recorder.recorder_instance || !method) {
+        LOGW("Cannot notify %s: JNI references not set", name);
+        return;
+    }
+    JniThreadAttachment attach(g_recorder.jvm);
+    if (!attach.ok()) {
+        LOGW("Failed to attach thread for JNI callback");
+        return;
+    }
+    attach.env->CallVoidMethod(g_recorder.recorder_instance, method);
+}
+
+static void notifyRecordingStarted() {
+    notifyJavaCallback(g_recorder.on_recording_started_method, "recording started");
 }
 
 static void notifyRecordingStopped() {
-    if (g_recorder.jvm && g_recorder.recorder_instance && g_recorder.on_recording_stopped_method) {
-        JNIEnv* env;
-        if (g_recorder.jvm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) == JNI_OK) {
-            env->CallVoidMethod(g_recorder.recorder_instance, g_recorder.on_recording_stopped_method);
-        }
-    }
+    notifyJavaCallback(g_recorder.on_recording_stopped_method, "recording stopped");
 }
 
-static void notifyRecordingError(const std::string& error) {
-    if (g_recorder.jvm && g_recorder.recorder_instance && g_recorder.on_recording_error_method) {
-        JNIEnv* env;
-        if (g_recorder.jvm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) == JNI_OK) {
-            jstring error_str = env->NewStringUTF(error.c_str());
-            env->CallVoidMethod(g_recorder.recorder_instance, g_recorder.on_recording_error_method, error_str);
-            env->DeleteLocalRef(error_str);
-        }
+static void notifyRecordingError(const std::string &error) {
+    if (!g_recorder.jvm || !g_recorder.recorder_instance || !g_recorder.on_recording_error_method) {
+        LOGW("Cannot notify recording error: JNI references not set");
+        return;
     }
+    JniThreadAttachment attach(g_recorder.jvm);
+    if (!attach.ok()) {
+        LOGW("Failed to attach thread for JNI callback");
+        return;
+    }
+    jstring error_str = attach.env->NewStringUTF(error.c_str());
+    attach.env->CallVoidMethod(g_recorder.recorder_instance, g_recorder.on_recording_error_method,
+                               error_str);
+    attach.env->DeleteLocalRef(error_str);
 }
 
 static std::string generateTimestampedFilePath() {
     auto now = std::chrono::system_clock::now();
     auto now_time_t = std::chrono::system_clock::to_time_t(now);
-    auto now_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % 1000;
+    auto now_ms =
+            std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % 1000;
 
     std::tm tm_buf;
     localtime_r(&now_time_t, &tm_buf);
@@ -114,9 +177,9 @@ static std::string getFinalRecordingFilePath() {
     return g_recorder.output_path;
 }
 
-static aaudio_data_callback_result_t audioCallback(AAudioStream* stream,
-                                                   void* userData,
-                                                   void* audioData,
+static aaudio_data_callback_result_t audioCallback(AAudioStream *stream,
+                                                   void *userData,
+                                                   void *audioData,
                                                    int32_t numFrames) {
     if (!g_recorder.is_recording.load(std::memory_order_acquire)) {
         return AAUDIO_CALLBACK_RESULT_STOP;
@@ -125,6 +188,7 @@ static aaudio_data_callback_result_t audioCallback(AAudioStream* stream,
     if (!g_recorder.wav_file || !g_recorder.wav_file->isOpen()) {
         LOGE("WAV file not available");
         g_recorder.is_recording.store(false, std::memory_order_release);
+        g_recorder.callback_notified.store(true, std::memory_order_release);
         notifyRecordingError("[FILE] WAV file not opened");
         return AAUDIO_CALLBACK_RESULT_STOP;
     }
@@ -164,25 +228,24 @@ static aaudio_data_callback_result_t audioCallback(AAudioStream* stream,
 
     if (!g_recorder.wav_file->writeData(audioData, static_cast<size_t>(bytes_to_write))) {
         LOGE("Failed to write audio data to WAV file");
-        g_recorder.is_recording.store(false, std::memory_order_release);
-        notifyRecordingError("[FILE] Failed to write audio data");
-        return AAUDIO_CALLBACK_RESULT_STOP;
+        // Continue recording even if write fails (might be temporary permission issue)
     }
 
     return AAUDIO_CALLBACK_RESULT_CONTINUE;
 }
 
-static void errorCallback(AAudioStream* stream, void* userData, aaudio_result_t error) {
+static void errorCallback(AAudioStream *stream, void *userData, aaudio_result_t error) {
     LOGE("AAudio error callback: %s", AAudio_convertResultToText(error));
     g_recorder.is_recording.store(false, std::memory_order_release);
-
+    g_recorder.callback_notified.store(true, std::memory_order_release);
+    // Notify Java so it calls stopNativeRecording to clean up resources
     std::string error_msg = "[STREAM] Recording stream error: ";
     error_msg += AAudio_convertResultToText(error);
     notifyRecordingError(error_msg);
 }
 
 static bool createAAudioStream() {
-    AAudioStreamBuilder* builder = nullptr;
+    AAudioStreamBuilder *builder = nullptr;
     aaudio_result_t result = AAudio_createStreamBuilder(&builder);
 
     if (result != AAUDIO_OK) {
@@ -200,34 +263,40 @@ static bool createAAudioStream() {
 
     // Set buffer capacity based on performance mode
     int32_t buffer_capacity = (g_recorder.performance_mode == AAUDIO_PERFORMANCE_MODE_LOW_LATENCY)
-                                  ? (g_recorder.sample_rate * 40) / 1000    // 40ms for low latency
-                                  : (g_recorder.sample_rate * 100) / 1000;  // 100ms for power saving
+                              ? (g_recorder.sample_rate * 40) / 1000    // 40ms for low latency
+                              : (g_recorder.sample_rate * 100) / 1000;  // 100ms for power saving
     AAudioStreamBuilder_setBufferCapacityInFrames(builder, buffer_capacity);
 
     AAudioStreamBuilder_setDataCallback(builder, audioCallback, nullptr);
     AAudioStreamBuilder_setErrorCallback(builder, errorCallback, nullptr);
 
-    result = AAudioStreamBuilder_openStream(builder, &g_recorder.stream);
+    AAudioStream *raw_stream = nullptr;
+    result = AAudioStreamBuilder_openStream(builder, &raw_stream);
     AAudioStreamBuilder_delete(builder);
     if (result != AAUDIO_OK) {
         LOGE("Failed to open recording stream: %s", AAudio_convertResultToText(result));
         return false;
     }
+    g_recorder.stream.reset(raw_stream);
 
-    int32_t frames_per_burst = AAudioStream_getFramesPerBurst(g_recorder.stream);
+    int32_t frames_per_burst = AAudioStream_getFramesPerBurst(g_recorder.stream.get());
     if (frames_per_burst > 0) {
         int32_t optimal_size =
-            frames_per_burst * (g_recorder.performance_mode == AAUDIO_PERFORMANCE_MODE_LOW_LATENCY ? 2 : 4);
-        optimal_size = std::min(optimal_size, AAudioStream_getBufferCapacityInFrames(g_recorder.stream));
-        AAudioStream_setBufferSizeInFrames(g_recorder.stream, optimal_size);
+                frames_per_burst *
+                (g_recorder.performance_mode == AAUDIO_PERFORMANCE_MODE_LOW_LATENCY ? 2 : 4);
+        optimal_size = std::min(optimal_size,
+                                AAudioStream_getBufferCapacityInFrames(g_recorder.stream.get()));
+        AAudioStream_setBufferSizeInFrames(g_recorder.stream.get(), optimal_size);
     }
 
-    int32_t actual_sample_rate = AAudioStream_getSampleRate(g_recorder.stream);
-    int32_t actual_channel_count = AAudioStream_getChannelCount(g_recorder.stream);
-    aaudio_format_t actual_format = AAudioStream_getFormat(g_recorder.stream);
+    int32_t actual_sample_rate = AAudioStream_getSampleRate(g_recorder.stream.get());
+    int32_t actual_channel_count = AAudioStream_getChannelCount(g_recorder.stream.get());
+    aaudio_format_t actual_format = AAudioStream_getFormat(g_recorder.stream.get());
 
-    LOGI("Recording stream created - Sample Rate: %d, Channels: %d, Format: %d, Buffer: %d frames", actual_sample_rate,
-         actual_channel_count, actual_format, AAudioStream_getBufferCapacityInFrames(g_recorder.stream));
+    LOGI("Recording stream created - Sample Rate: %d, Channels: %d, Format: %d, Buffer: %d frames",
+         actual_sample_rate,
+         actual_channel_count, actual_format,
+         AAudioStream_getBufferCapacityInFrames(g_recorder.stream.get()));
 
     g_recorder.sample_rate = actual_sample_rate;
     g_recorder.channel_count = actual_channel_count;
@@ -238,34 +307,57 @@ static bool createAAudioStream() {
 
 extern "C" {
 
-JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
+JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
     g_recorder.jvm = vm;
     LOGI("JNI_OnLoad - AAudio Recorder");
     return JNI_VERSION_1_6;
 }
 
-JNIEXPORT jboolean JNICALL Java_com_example_aaudiorecorder_recorder_AAudioRecorder_initializeNative(JNIEnv* env,
-                                                                                                    jobject thiz) {
+JNIEXPORT jboolean JNICALL
+Java_com_example_aaudiorecorder_recorder_AAudioRecorder_initializeNative(JNIEnv *env,
+                                                                         jobject thiz) {
     LOGI("initializeNative");
+
+    if (!validateRecorderState()) {
+        LOGE("Cannot initialize while recording");
+        return JNI_FALSE;
+    }
 
     if (g_recorder.recorder_instance != nullptr) {
         env->DeleteGlobalRef(g_recorder.recorder_instance);
+        g_recorder.recorder_instance = nullptr;
     }
     g_recorder.recorder_instance = env->NewGlobalRef(thiz);
+    if (!g_recorder.recorder_instance) {
+        LOGE("Failed to create global reference");
+        return JNI_FALSE;
+    }
 
     jclass clazz = env->GetObjectClass(thiz);
     if (clazz == nullptr) {
         LOGE("Failed to get object class");
+        if (g_recorder.recorder_instance) {
+            env->DeleteGlobalRef(g_recorder.recorder_instance);
+            g_recorder.recorder_instance = nullptr;
+        }
         return JNI_FALSE;
     }
 
-    g_recorder.on_recording_started_method = env->GetMethodID(clazz, "onNativeRecordingStarted", "()V");
-    g_recorder.on_recording_stopped_method = env->GetMethodID(clazz, "onNativeRecordingStopped", "()V");
-    g_recorder.on_recording_error_method = env->GetMethodID(clazz, "onNativeRecordingError", "(Ljava/lang/String;)V");
+    g_recorder.on_recording_started_method = env->GetMethodID(clazz, "onNativeRecordingStarted",
+                                                              "()V");
+    g_recorder.on_recording_stopped_method = env->GetMethodID(clazz, "onNativeRecordingStopped",
+                                                              "()V");
+    g_recorder.on_recording_error_method = env->GetMethodID(clazz, "onNativeRecordingError",
+                                                            "(Ljava/lang/String;)V");
 
     if (!g_recorder.on_recording_started_method || !g_recorder.on_recording_stopped_method ||
         !g_recorder.on_recording_error_method) {
         LOGE("Failed to get callback method IDs");
+        env->DeleteLocalRef(clazz);
+        if (g_recorder.recorder_instance) {
+            env->DeleteGlobalRef(g_recorder.recorder_instance);
+            g_recorder.recorder_instance = nullptr;
+        }
         return JNI_FALSE;
     }
 
@@ -274,7 +366,7 @@ JNIEXPORT jboolean JNICALL Java_com_example_aaudiorecorder_recorder_AAudioRecord
 }
 
 JNIEXPORT jboolean JNICALL
-Java_com_example_aaudiorecorder_recorder_AAudioRecorder_setNativeConfig(JNIEnv* env,
+Java_com_example_aaudiorecorder_recorder_AAudioRecorder_setNativeConfig(JNIEnv *env,
                                                                         jobject thiz,
                                                                         jint inputPreset,
                                                                         jint sampleRate,
@@ -284,6 +376,11 @@ Java_com_example_aaudiorecorder_recorder_AAudioRecorder_setNativeConfig(JNIEnv* 
                                                                         jint sharingMode,
                                                                         jstring audioFilePath) {
     LOGI("setNativeConfig");
+
+    if (!validateRecorderState()) {
+        LOGE("Cannot change config while recording");
+        return JNI_FALSE;
+    }
 
     if (audioFilePath == nullptr) {
         LOGE("Audio file path is null");
@@ -297,13 +394,13 @@ Java_com_example_aaudiorecorder_recorder_AAudioRecorder_setNativeConfig(JNIEnv* 
     g_recorder.performance_mode = static_cast<aaudio_performance_mode_t>(performanceMode);
     g_recorder.sharing_mode = static_cast<aaudio_sharing_mode_t>(sharingMode);
 
-    const char* path_str = env->GetStringUTFChars(audioFilePath, nullptr);
+    const char *path_str = env->GetStringUTFChars(audioFilePath, nullptr);
     if (path_str != nullptr) {
         g_recorder.output_path = path_str;
         // Check if path ends with .wav - if not, it's a directory path and we need to generate filename
         g_recorder.auto_generate_filename =
-            (g_recorder.output_path.length() < 4 ||
-             g_recorder.output_path.substr(g_recorder.output_path.length() - 4) != ".wav");
+                (g_recorder.output_path.length() < 4 ||
+                 g_recorder.output_path.substr(g_recorder.output_path.length() - 4) != ".wav");
         env->ReleaseStringUTFChars(audioFilePath, path_str);
     } else {
         LOGE("Failed to get audio file path string");
@@ -313,14 +410,17 @@ Java_com_example_aaudiorecorder_recorder_AAudioRecorder_setNativeConfig(JNIEnv* 
     return JNI_TRUE;
 }
 
-JNIEXPORT jboolean JNICALL Java_com_example_aaudiorecorder_recorder_AAudioRecorder_startNativeRecording(JNIEnv* env,
-                                                                                                        jobject thiz) {
-    if (g_recorder.is_recording.load()) {
+JNIEXPORT jboolean JNICALL
+Java_com_example_aaudiorecorder_recorder_AAudioRecorder_startNativeRecording(JNIEnv *env,
+                                                                             jobject thiz) {
+    if (g_recorder.is_recording.load(std::memory_order_acquire)) {
         LOGW("Already recording");
         return JNI_FALSE;
     }
 
     LOGI("startNativeRecording");
+
+    g_recorder.callback_notified.store(false, std::memory_order_release);
 
     if (!createAAudioStream()) {
         notifyRecordingError("[STREAM] Failed to create recording stream");
@@ -330,12 +430,10 @@ JNIEXPORT jboolean JNICALL Java_com_example_aaudiorecorder_recorder_AAudioRecord
     std::string file_path = getFinalRecordingFilePath();
     g_recorder.wav_file = std::make_unique<WavFile>();
 
-    if (!g_recorder.wav_file->open(file_path, g_recorder.sample_rate, g_recorder.channel_count, g_recorder.format)) {
+    if (!g_recorder.wav_file->open(file_path, g_recorder.sample_rate, g_recorder.channel_count,
+                                   g_recorder.format)) {
         LOGE("Failed to open WAV file: %s", file_path.c_str());
-        if (g_recorder.stream) {
-            AAudioStream_close(g_recorder.stream);
-            g_recorder.stream = nullptr;
-        }
+        g_recorder.stream.reset();
         g_recorder.wav_file.reset();
         notifyRecordingError("[FILE] Failed to create recording file");
         return JNI_FALSE;
@@ -344,10 +442,11 @@ JNIEXPORT jboolean JNICALL Java_com_example_aaudiorecorder_recorder_AAudioRecord
     // Set recording flag before starting stream to avoid race condition with callback
     g_recorder.is_recording.store(true, std::memory_order_release);
 
-    aaudio_result_t result = AAudioStream_requestStart(g_recorder.stream);
+    aaudio_result_t result = AAudioStream_requestStart(g_recorder.stream.get());
     if (result != AAUDIO_OK) {
         LOGE("Failed to start recording stream: %s", AAudio_convertResultToText(result));
         g_recorder.is_recording.store(false, std::memory_order_release);
+        g_recorder.stream.reset();
         g_recorder.wav_file->close();
         g_recorder.wav_file.reset();
         notifyRecordingError("[STREAM] Failed to start recording stream");
@@ -359,30 +458,28 @@ JNIEXPORT jboolean JNICALL Java_com_example_aaudiorecorder_recorder_AAudioRecord
     return JNI_TRUE;
 }
 
-JNIEXPORT jboolean JNICALL Java_com_example_aaudiorecorder_recorder_AAudioRecorder_stopNativeRecording(JNIEnv* env,
-                                                                                                       jobject thiz) {
+JNIEXPORT jboolean JNICALL
+Java_com_example_aaudiorecorder_recorder_AAudioRecorder_stopNativeRecording(JNIEnv *env,
+                                                                            jobject thiz) {
     LOGI("stopNativeRecording");
 
     g_recorder.is_recording.store(false, std::memory_order_release);
 
     if (g_recorder.stream) {
-        aaudio_result_t result = AAudioStream_requestStop(g_recorder.stream);
+        aaudio_result_t result = AAudioStream_requestStop(g_recorder.stream.get());
         if (result != AAUDIO_OK) {
             LOGW("Failed to request stop: %s", AAudio_convertResultToText(result));
         } else {
             aaudio_stream_state_t state = AAUDIO_STREAM_STATE_STOPPING;
             result =
-                AAudioStream_waitForStateChange(g_recorder.stream, AAUDIO_STREAM_STATE_STOPPING, &state, 100000000);
+                    AAudioStream_waitForStateChange(g_recorder.stream.get(),
+                                                    AAUDIO_STREAM_STATE_STOPPING, &state,
+                                                    100000000);
             if (result != AAUDIO_OK) {
                 LOGW("Failed to wait for stop: %s", AAudio_convertResultToText(result));
             }
         }
-
-        result = AAudioStream_close(g_recorder.stream);
-        if (result != AAUDIO_OK) {
-            LOGW("Failed to close stream: %s", AAudio_convertResultToText(result));
-        }
-        g_recorder.stream = nullptr;
+        g_recorder.stream.reset();
     }
 
     if (g_recorder.wav_file) {
@@ -390,18 +487,21 @@ JNIEXPORT jboolean JNICALL Java_com_example_aaudiorecorder_recorder_AAudioRecord
         g_recorder.wav_file.reset();
     }
 
-    LOGI("Recording stopped successfully");
-
-    notifyRecordingStopped();
+    // Only notify stopped if callback hasn't already notified Java (error or EOF)
+    bool already_notified = g_recorder.callback_notified.exchange(false, std::memory_order_acq_rel);
+    if (!already_notified) {
+        notifyRecordingStopped();
+    }
 
     return JNI_TRUE;
 }
 
-JNIEXPORT void JNICALL Java_com_example_aaudiorecorder_recorder_AAudioRecorder_releaseNative(JNIEnv* env,
-                                                                                             jobject thiz) {
+JNIEXPORT void JNICALL
+Java_com_example_aaudiorecorder_recorder_AAudioRecorder_releaseNative(JNIEnv *env,
+                                                                      jobject thiz) {
     LOGI("releaseNative");
 
-    if (g_recorder.is_recording.load()) {
+    if (g_recorder.is_recording.load(std::memory_order_acquire)) {
         Java_com_example_aaudiorecorder_recorder_AAudioRecorder_stopNativeRecording(env, thiz);
     }
 
@@ -420,13 +520,15 @@ JNIEXPORT void JNICALL Java_com_example_aaudiorecorder_recorder_AAudioRecorder_r
 
 }  // extern "C"
 
-WavFile::WavFile() : sample_rate_(0), channel_count_(0), format_(AAUDIO_FORMAT_PCM_I16), data_size_(0) {}
+WavFile::WavFile() : sample_rate_(0), channel_count_(0), format_(AAUDIO_FORMAT_PCM_I16),
+                     data_size_(0) {}
 
 WavFile::~WavFile() noexcept {
     close();
 }
 
-bool WavFile::open(const std::string& file_path, int32_t sample_rate, int32_t channel_count, aaudio_format_t format) {
+bool WavFile::open(const std::string &file_path, int32_t sample_rate, int32_t channel_count,
+                   aaudio_format_t format) {
     close();
 
     file_path_ = file_path;
@@ -444,7 +546,8 @@ bool WavFile::open(const std::string& file_path, int32_t sample_rate, int32_t ch
     writeHeader(0);
 
     int bits_per_sample = getBytesPerSample(format_) * 8;
-    LOGI("WAV file opened: %s, %dHz, %dch, %dbit", file_path.c_str(), sample_rate, channel_count, bits_per_sample);
+    LOGI("WAV file opened: %s, %dHz, %dch, %dbit", file_path.c_str(), sample_rate, channel_count,
+         bits_per_sample);
     return true;
 }
 
@@ -456,18 +559,23 @@ void WavFile::close() {
     }
 }
 
-bool WavFile::writeData(const void* data, size_t size) {
+bool WavFile::writeData(const void *data, size_t size) {
     if (!file_stream_.is_open() || !data || size == 0) {
         return false;
     }
 
-    file_stream_.write(static_cast<const char*>(data), static_cast<std::streamsize>(size));
+    file_stream_.write(static_cast<const char *>(data), static_cast<std::streamsize>(size));
     if (file_stream_.fail()) {
         LOGE("Failed to write data to WAV file");
         return false;
     }
 
     data_size_ += static_cast<uint32_t>(size);
+    // WAV data chunk is limited to ~4GB (uint32_t), stop writing if overflow would occur
+    if (data_size_ < static_cast<uint32_t>(size)) {
+        LOGE("Data size overflow detected, stopping recording");
+        return false;
+    }
     return true;
 }
 
@@ -520,6 +628,6 @@ void WavFile::writeHeader(uint32_t data_size) {
     header.subchunk2_size = data_size;
 
     file_stream_.seekp(0, std::ios::beg);
-    file_stream_.write(reinterpret_cast<const char*>(&header), sizeof(header));
+    file_stream_.write(reinterpret_cast<const char *>(&header), sizeof(header));
     file_stream_.flush();
 }

@@ -138,9 +138,7 @@ class AAudioRecorder(private val context: Context) {
         stopNativeRecording()
     }
 
-    fun isRecording(): Boolean {
-        return state == RecordingState.RECORDING
-    }
+    fun isRecording(): Boolean = state == RecordingState.RECORDING
 
     fun release() {
         if (state == RecordingState.RECORDING) {

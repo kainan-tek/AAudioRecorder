@@ -34,8 +34,9 @@ extern "C" {
  * @param thiz Java object instance
  * @return JNI_TRUE if initialization successful, JNI_FALSE otherwise
  */
-JNIEXPORT jboolean JNICALL Java_com_example_aaudiorecorder_recorder_AAudioRecorder_initializeNative(JNIEnv* env,
-                                                                                                    jobject thiz);
+JNIEXPORT jboolean JNICALL
+Java_com_example_aaudiorecorder_recorder_AAudioRecorder_initializeNative(JNIEnv *env,
+                                                                         jobject thiz);
 
 /**
  * Set native audio recording configuration
@@ -51,7 +52,7 @@ JNIEXPORT jboolean JNICALL Java_com_example_aaudiorecorder_recorder_AAudioRecord
  * @return JNI_TRUE if configuration set successfully, JNI_FALSE otherwise
  */
 JNIEXPORT jboolean JNICALL
-Java_com_example_aaudiorecorder_recorder_AAudioRecorder_setNativeConfig(JNIEnv* env,
+Java_com_example_aaudiorecorder_recorder_AAudioRecorder_setNativeConfig(JNIEnv *env,
                                                                         jobject thiz,
                                                                         jint inputPreset,
                                                                         jint sampleRate,
@@ -67,8 +68,9 @@ Java_com_example_aaudiorecorder_recorder_AAudioRecorder_setNativeConfig(JNIEnv* 
  * @param thiz Java object instance
  * @return JNI_TRUE if recording started successfully, JNI_FALSE otherwise
  */
-JNIEXPORT jboolean JNICALL Java_com_example_aaudiorecorder_recorder_AAudioRecorder_startNativeRecording(JNIEnv* env,
-                                                                                                        jobject thiz);
+JNIEXPORT jboolean JNICALL
+Java_com_example_aaudiorecorder_recorder_AAudioRecorder_startNativeRecording(JNIEnv *env,
+                                                                             jobject thiz);
 
 /**
  * Stop audio recording
@@ -76,15 +78,17 @@ JNIEXPORT jboolean JNICALL Java_com_example_aaudiorecorder_recorder_AAudioRecord
  * @param thiz Java object instance
  * @return JNI_TRUE if recording stopped successfully, JNI_FALSE otherwise
  */
-JNIEXPORT jboolean JNICALL Java_com_example_aaudiorecorder_recorder_AAudioRecorder_stopNativeRecording(JNIEnv* env,
-                                                                                                       jobject thiz);
+JNIEXPORT jboolean JNICALL
+Java_com_example_aaudiorecorder_recorder_AAudioRecorder_stopNativeRecording(JNIEnv *env,
+                                                                            jobject thiz);
 
 /**
  * Release audio recorder resources
  * @param env JNI environment
  * @param thiz Java object instance
  */
-JNIEXPORT void JNICALL Java_com_example_aaudiorecorder_recorder_AAudioRecorder_releaseNative(JNIEnv* env, jobject thiz);
+JNIEXPORT void JNICALL
+Java_com_example_aaudiorecorder_recorder_AAudioRecorder_releaseNative(JNIEnv *env, jobject thiz);
 
 #ifdef __cplusplus
 }
@@ -100,23 +104,24 @@ public:
     ~WavFile() noexcept;
 
     // Disable copy and assignment
-    WavFile(const WavFile&) = delete;
+    WavFile(const WavFile &) = delete;
 
-    WavFile& operator=(const WavFile&) = delete;
+    WavFile &operator=(const WavFile &) = delete;
 
-    // Allow move
-    WavFile(WavFile&&) noexcept = default;
+    // Disable move (WavFile is always managed via unique_ptr)
+    WavFile(WavFile &&) = delete;
 
-    WavFile& operator=(WavFile&&) noexcept = default;
+    WavFile &operator=(WavFile &&) = delete;
 
     // Open WAV file for writing with specified parameters
-    bool open(const std::string& filePath, int32_t sampleRate, int32_t channelCount, aaudio_format_t format);
+    bool open(const std::string &filePath, int32_t sampleRate, int32_t channelCount,
+              aaudio_format_t format);
 
     // Close WAV file
     void close();
 
     // Write audio data
-    bool writeData(const void* data, size_t size);
+    bool writeData(const void *data, size_t size);
 
     // Get whether file is open
     bool isOpen() const;
@@ -126,6 +131,7 @@ public:
 
 private:
     // WAV file header definition
+#pragma pack(push, 1)
     struct WavHeader {
         char chunk_id[4];                           // "RIFF"
         [[maybe_unused]] uint32_t chunk_size;       // 36 + subchunk2_size
@@ -141,6 +147,7 @@ private:
         char subchunk2_id[4];                       // "data"
         [[maybe_unused]] uint32_t subchunk2_size;   // num_samples * num_channels * bits_per_sample / 8
     };
+#pragma pack(pop)
 
     std::string file_path_;      // File path
     std::ofstream file_stream_;  // File stream

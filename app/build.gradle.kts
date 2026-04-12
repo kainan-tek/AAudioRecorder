@@ -5,15 +5,14 @@ plugins {
 android {
     namespace = "com.example.aaudiorecorder"
     compileSdk = 36
-    buildToolsVersion = "36.1.0"
+    buildToolsVersion = "36.0.0"
     ndkVersion = "29.0.14206865"
-    compileSdkMinor = 1
 
     defaultConfig {
         applicationId = "com.example.aaudiorecorder"
         minSdk = 32
-        versionCode = 20100
-        versionName = "2.1.0"
+        versionCode = 20200
+        versionName = "2.2.0"
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_21

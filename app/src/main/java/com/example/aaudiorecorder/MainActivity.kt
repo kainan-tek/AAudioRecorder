@@ -341,30 +341,18 @@ class MainActivity : AppCompatActivity() {
     /**
      * Convert technical error message to user-friendly message
      */
-    private fun getUserFriendlyErrorMessage(error: String): String {
-        return when {
-            error.startsWith(
-                "[FILE]", ignoreCase = true
-            ) -> "Unable to create recording file. Please check storage permissions and available space."
-
-            error.startsWith(
-                "[STREAM]", ignoreCase = true
-            ) -> "Audio system initialization failed. Please try again."
-
-            error.startsWith(
-                "[PARAM]", ignoreCase = true
-            ) -> "Invalid audio configuration. Please select a different configuration."
-
-            error.contains(
-                "Already recording", ignoreCase = true
-            ) -> "Recording is already in progress."
-
-            error.contains(
-                "Not currently recording", ignoreCase = true
-            ) -> "No recording is in progress."
-
-            else -> "Recording failed. Please try again."
-        }
+    private fun getUserFriendlyErrorMessage(error: String): String = when {
+        error.startsWith("[FILE]", ignoreCase = true) -> 
+            "Unable to create recording file. Please check storage permissions and available space."
+        error.startsWith("[STREAM]", ignoreCase = true) -> 
+            "Audio system initialization failed. Please try again."
+        error.startsWith("[PARAM]", ignoreCase = true) -> 
+            "Invalid audio configuration. Please select a different configuration."
+        error.contains("Already recording", ignoreCase = true) -> 
+            "Recording is already in progress."
+        error.contains("Not currently recording", ignoreCase = true) -> 
+            "No recording is in progress."
+        else -> "Recording failed. Please try again."
     }
 
     override fun onDestroy() {

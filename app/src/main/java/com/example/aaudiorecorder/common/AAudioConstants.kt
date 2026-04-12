@@ -101,35 +101,25 @@ object AAudioConstants {
     /**
      * Get format integer value from bit depth
      */
-    fun getFormatFromBitDepth(bitDepth: Int): Int {
-        return when (bitDepth) {
-            16 -> AAudio.FORMAT_PCM_I16
-            24 -> AAudio.FORMAT_PCM_I24_PACKED
-            32 -> AAudio.FORMAT_PCM_I32
-            else -> AAudio.FORMAT_PCM_I16 // Default PCM_I16
-        }
+    fun getFormatFromBitDepth(bitDepth: Int): Int = when (bitDepth) {
+        16 -> AAudio.FORMAT_PCM_I16
+        24 -> AAudio.FORMAT_PCM_I24_PACKED
+        32 -> AAudio.FORMAT_PCM_I32
+        else -> AAudio.FORMAT_PCM_I16
     }
 
     /**
      * Generic enum value parser with error handling
      */
     private fun parseEnumValue(
-        map: Map<Int, String>,
-        value: String,
-        default: Int,
-        typeName: String = "",
-    ): Int {
-        val entry = map.entries.find { it.value == value }
-        if (entry != null) {
-            return entry.key
-        }
-
+        map: Map<Int, String>, value: String, default: Int, typeName: String = ""
+    ): Int = map.entries.find { it.value == value }?.key ?: run {
         if (value.isNotEmpty()) {
             android.util.Log.w(
                 "AAudioConstants", "Unknown $typeName value: $value, using default: $default"
             )
         }
-        return default
+        default
     }
 
     /**
@@ -154,16 +144,14 @@ object AAudioConstants {
     /**
      * Validate sample rate
      */
-    fun isValidSampleRate(sampleRate: Int): Boolean {
-        return sampleRate in MIN_SAMPLE_RATE..MAX_SAMPLE_RATE
-    }
+    fun isValidSampleRate(sampleRate: Int): Boolean = 
+        sampleRate in MIN_SAMPLE_RATE..MAX_SAMPLE_RATE
 
     /**
      * Validate channel count
      */
-    fun isValidChannelCount(channelCount: Int): Boolean {
-        return channelCount in MIN_CHANNEL_COUNT..MAX_CHANNEL_COUNT
-    }
+    fun isValidChannelCount(channelCount: Int): Boolean = 
+        channelCount in MIN_CHANNEL_COUNT..MAX_CHANNEL_COUNT
 
     /**
      * Validate format bit depth
